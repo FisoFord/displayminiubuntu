@@ -59,8 +59,8 @@ def _base_widget(wtype: str, wid: str, **kw):
         "radius": 12,
         "font_size": 18,
         "color": "#22d3ee",
-        "label_color": "#94a3b8",
-        "value_color": "#f8fafc",
+        "label_color": "#c7d7ea",
+        "value_color": "#ffffff",
         "track_color": "#1e293b",
         "label": "",
         "metric": "cpu",
@@ -96,18 +96,18 @@ def _preset_proxmox():
 
 def _preset_minimal():
     return [
-        _base_widget("clock", "clock", x=16, y=10, w=288, h=52, font_size=30),
+        _base_widget("clock", "clock", x=16, y=6, w=288, h=58, font_size=34),
         _base_widget("metric", "cpu", metric="cpu", x=16, y=68, w=288, h=104,
                      font_size=60, label="USO DE CPU", color="#22d3ee"),
-        _base_widget("bar", "ram", metric="ram", x=16, y=178, w=288, h=44,
+        _base_widget("bar", "ram", metric="ram", x=16, y=178, w=288, h=42,
                      color="#a78bfa", font_size=18, label="MEMORIA"),
-        _base_widget("bar", "netdown", metric="net_down", x=16, y=228, w=288, h=44,
+        _base_widget("bar", "netdown", metric="net_down", x=16, y=226, w=288, h=42,
                      color="#34d399", font_size=18, label="RED BAJADA"),
-        _base_widget("bar", "temp", metric="temp", x=16, y=278, w=288, h=44,
+        _base_widget("bar", "temp", metric="temp", x=16, y=274, w=288, h=42,
                      color="#fb7185", font_size=18, label="TEMPERATURA"),
-        _base_widget("services", "services", x=16, y=330, w=140, h=144,
+        _base_widget("services", "services", x=16, y=324, w=140, h=144,
                      font_size=19, label="SERVICIOS", source="systemd"),
-        _base_widget("services", "docker", x=164, y=330, w=140, h=144,
+        _base_widget("services", "docker", x=164, y=324, w=140, h=144,
                      font_size=19, label="CONTENEDORES", source="docker"),
     ]
 

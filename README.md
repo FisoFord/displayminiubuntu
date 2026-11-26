@@ -1,3 +1,11 @@
+<p align="center">
+  <b>Español</b> ·
+  <a href="README.en.md">English</a> ·
+  <a href="README.pt.md">Português</a> ·
+  <a href="README.fr.md">Français</a> ·
+  <a href="README.it.md">Italiano</a>
+</p>
+
 <h1 align="center">MiniDisplay Web</h1>
 
 <p align="center">
@@ -77,9 +85,18 @@ regla `sudoers` limitada a `systemctl` y `docker`).
 
 ## Fondos por defecto
 
-El proyecto incluye cinco imágenes en `webapp/defaults/backgrounds/`. En una
-instalación nueva se copian solas a `/var/lib/minidisplay-web/backgrounds/` y
-quedan activadas en la rotación. No hay que subir nada.
+El proyecto incluye cinco **imágenes originales** generadas para MiniDisplay Web
+en `webapp/defaults/backgrounds/`:
+
+- `velero-estrellas.jpg` — velero bajo la Vía Láctea.
+- `circuito.jpg` — placa de circuito en azul y ámbar.
+- `botes-playa.jpg` — botes varados en una playa de piedras.
+- `luna-fantasia.jpg` — valle fantástico bajo una luna roja.
+- `playa-atardecer.jpg` — playa rocosa al atardecer.
+
+En una instalación nueva se copian solas a
+`/var/lib/minidisplay-web/backgrounds/` y quedan activadas en la rotación. No hay
+que subir nada y no dependen de imágenes de terceros.
 
 Para añadir más fondos de serie, colócalos en esa carpeta y actualiza
 `webapp/defaults/backgrounds.json` (o borra el JSON para que se listen todos).
@@ -259,11 +276,15 @@ driverMiniDisplay/
 │   ├── display.py          # hilo de envío al panel
 │   ├── templates/          # interfaz
 │   ├── static/             # CSS y JS
-│   ├── defaults/           # 5 fondos incluidos
+│   ├── defaults/           # 5 fondos originales
 │   ├── requirements.txt
 │   └── install.sh
 ├── docs/                   # capturas del README
-├── README.md
+├── README.md               # español
+├── README.en.md            # inglés
+├── README.pt.md            # portugués
+├── README.fr.md            # francés
+├── README.it.md            # italiano
 └── LICENSE
 ```
 
@@ -292,7 +313,8 @@ Desarrollado por **Fiso**.
 - [`turing-smart-screen-python`](https://github.com/mathoudebine/turing-smart-screen-python)
   sirvió como referencia para validar el protocolo; este proyecto es una
   implementación independiente.
-- Fondos por defecto aportados por el autor.
+- Los cinco fondos por defecto son imágenes originales generadas para este
+  proyecto.
 
 ## Licencia
 

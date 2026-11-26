@@ -108,6 +108,22 @@ def _ellipsize(draw, text: str, font_obj, max_width: int) -> str:
     return (text + "…") if text else ""
 
 
+def _text(draw, xy, text, font_obj, fill, anchor=None, stroke=1):
+    """Texto con un contorno oscuro fino para que se lea sobre fotos claras."""
+    kwargs = {"font": font_obj, "fill": fill}
+    if anchor:
+        kwargs["anchor"] = anchor
+    if stroke:
+        kwargs["stroke_width"] = stroke
+        kwargs["stroke_fill"] = (0, 0, 0)
+    try:
+        draw.text(xy, text, **kwargs)
+    except (TypeError, ValueError):
+        kwargs.pop("stroke_width", None)
+        kwargs.pop("stroke_fill", None)
+        draw.text(xy, text, **kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Metricas
 # ---------------------------------------------------------------------------
@@ -288,11 +304,11 @@ def _title_row(draw, widget: dict, x, y, w, label, value_text="", color=None):
     size = max(10, int(widget.get("font_size", 18) * 0.76))
     f = font(size, False)
     label = _short(label.upper(), 26)
-    draw.text((x, y), label, font=f, fill=rgba(widget.get("label_color", "#94a3b8")))
+    _text(draw, (x, y), label, f, rgba(widget.get("label_color", "#c7d7ea")))
     if value_text:
         vf = font(size, True)
-        draw.text((x + w, y), value_text, font=vf,
-                  fill=rgba(color or widget.get("value_color", "#f8fafc")), anchor="ra")
+        _text(draw, (x + w, y), value_text, vf,
+              rgba(color or widget.get("value_color", "#ffffff")), anchor="ra")
 
 
 def _draw_ring(img, draw, widget, data, rects):
@@ -312,16 +328,16 @@ def _draw_ring(img, draw, widget, data, rects):
 
     value_text = data["text"]
     vf = _fit_font(draw, value_text, int(size * 0.30), int(size * 0.80), True)
-    draw.text((cx, cy - (6 if data["unit"] else 0)), value_text, font=vf,
-              fill=rgba(widget.get("value_color", "#f8fafc")), anchor="mm")
+    _text(draw, (cx, cy - (6 if data["unit"] else 0)), value_text, vf,
+          rgba(widget.get("value_color", "#ffffff")), anchor="mm", stroke=2)
     if data["unit"]:
         uf = font(max(8, int(size * 0.10)), False)
-        draw.text((cx, cy + int(size * 0.10)), data["unit"], font=uf,
-                  fill=rgba(widget.get("label_color", "#94a3b8")), anchor="ma")
+        _text(draw, (cx, cy + int(size * 0.10)), data["unit"], uf,
+              rgba(widget.get("label_color", "#c7d7ea")), anchor="ma")
     if widget.get("label"):
         lf = font(max(8, int(widget.get("font_size", 18) * 0.72)), True)
-        draw.text((cx, y + h - 2), _short(widget["label"].upper(), 18), font=lf,
-                  fill=rgba(widget.get("label_color", "#94a3b8")), anchor="md")
+        _text(draw, (cx, y + h - 2), _short(widget["label"].upper(), 18), lf,
+              rgba(widget.get("label_color", "#c7d7ea")), anchor="md")
     rects[widget["id"]] = [x, y, w, h]
 
 
@@ -342,8 +358,8 @@ def _draw_bar(img, draw, widget, data, rects):
                                radius=bar_h // 2, fill=rgba(widget.get("color", "#22d3ee")))
     if data.get("sub") and h >= 62:
         sf = font(max(8, int(widget.get("font_size", 18) * 0.62)), False)
-        draw.text((x + pad, bar_y - 3), _short(data["sub"], 34), font=sf,
-                  fill=rgba(widget.get("label_color", "#94a3b8")), anchor="ld")
+        _text(draw, (x + pad, bar_y - 3), _short(data["sub"], 34), sf,
+              rgba(widget.get("label_color", "#c7d7ea")), anchor="ld")
     rects[widget["id"]] = [x, y, w, h]
 
 
@@ -391,9 +407,8 @@ def _draw_metric(img, draw, widget, data, rects):
     sub_h = sub_size + 5 if sub else 0
 
     if label:
-        draw.text((x + pad, y + pad), _short(label, 28),
-                  font=font(label_size, False),
-                  fill=rgba(widget.get("label_color", "#94a3b8")))
+        _text(draw, (x + pad, y + pad), _short(label, 28),
+              font(label_size, False), rgba(widget.get("label_color", "#c7d7ea")))
 
     top = y + pad + label_h
     bottom = y + h - pad - sub_h
@@ -418,16 +433,14 @@ def _draw_metric(img, draw, widget, data, rects):
         size -= 1
 
     vf = font(size, True)
-    draw.text((x + pad, center), text, font=vf,
-              fill=rgba(widget.get("value_color", "#f8fafc")), anchor="lm")
+    _text(draw, (x + pad, center), text, vf,
+          rgba(widget.get("value_color", "#ffffff")), anchor="lm", stroke=2)
     if unit:
-        draw.text((x + pad + draw.textlength(text, font=vf) + 4, center), unit,
-                  font=font(unit_size, True),
-                  fill=rgba(widget.get("color", "#22d3ee")), anchor="lm")
+        _text(draw, (x + pad + draw.textlength(text, font=vf) + 4, center), unit,
+              font(unit_size, True), rgba(widget.get("color", "#22d3ee")), anchor="lm")
     if sub:
-        draw.text((x + pad, y + h - pad), _short(sub, 40),
-                  font=font(sub_size, False),
-                  fill=rgba(widget.get("label_color", "#94a3b8")), anchor="ld")
+        _text(draw, (x + pad, y + h - pad), _short(sub, 40),
+              font(sub_size, False), rgba(widget.get("label_color", "#c7d7ea")), anchor="ld")
     rects[widget["id"]] = [x, y, w, h]
 
 
@@ -442,18 +455,18 @@ def _draw_text(img, draw, widget, stats, rects):
     color = rgba(widget.get("color", "#f8fafc"))
     line_h = int(size * 1.35)
     for row, line in enumerate(text.splitlines()[:20]):
-        draw.text((anchor_x, y + row * line_h), line, font=f, fill=color, anchor=anchor)
+        _text(draw, (anchor_x, y + row * line_h), line, f, color, anchor=anchor)
     rects[widget["id"]] = [x, y, w, h]
 
 
 def _draw_clock(img, draw, widget, stats, rects):
     x, y, w, h = widget["x"], widget["y"], widget["w"], widget["h"]
     pad = 4
-    fs = max(10, int(widget.get("font_size", 30)))
-    sf = font(max(8, int(fs * 0.37)), False)
-    sf_size = getattr(sf, "size", max(8, int(fs * 0.37)))
+    fs = max(10, int(widget.get("font_size", 34)))
+    sf = font(max(8, int(fs * 0.42)), False)
+    sf_size = getattr(sf, "size", max(8, int(fs * 0.42)))
 
-    max_right = int(w * 0.56)
+    max_right = int(w * 0.58)
     date_text = _ellipsize(draw, f"{stats.get('weekday', '')} {stats.get('date', '')}".strip(),
                            sf, max_right)
     host_text = _ellipsize(draw, stats.get("hostname", ""), sf, max_right)
@@ -461,15 +474,15 @@ def _draw_clock(img, draw, widget, stats, rects):
 
     time_text = stats.get("time", "--:--")
     vf = _fit_font(draw, time_text, fs, int(w - right_w - pad * 2 - 10), True)
-    draw.text((x + pad, y + h // 2), time_text, font=vf,
-              fill=rgba(widget.get("value_color", "#f8fafc")), anchor="lm")
+    _text(draw, (x + pad, y + h // 2), time_text, vf,
+          rgba(widget.get("value_color", "#ffffff")), anchor="lm", stroke=2)
 
-    line_h = int(sf_size * 1.45)
+    line_h = int(sf_size * 1.35)
     block_top = y + (h - line_h * 2) // 2
-    draw.text((x + w - pad, block_top), date_text, font=sf,
-              fill=rgba(widget.get("label_color", "#94a3b8")), anchor="ra")
-    draw.text((x + w - pad, block_top + line_h), host_text, font=sf,
-              fill=rgba(widget.get("label_color", "#94a3b8")), anchor="ra")
+    _text(draw, (x + w - pad, block_top), date_text, sf,
+          rgba(widget.get("label_color", "#c7d7ea")), anchor="ra")
+    _text(draw, (x + w - pad, block_top + line_h), host_text, sf,
+          rgba(widget.get("label_color", "#c7d7ea")), anchor="ra")
     rects[widget["id"]] = [x, y, w, h]
 
 
@@ -477,8 +490,8 @@ def _draw_host(img, draw, widget, stats, rects):
     x, y, w, h = widget["x"], widget["y"], widget["w"], widget["h"]
     pad = 6
     lf = font(max(9, int(widget.get("font_size", 14) * 0.9)), True)
-    draw.text((x + pad, y + pad), _short(stats.get("hostname", "host"), 26), font=lf,
-              fill=rgba(widget.get("value_color", "#f8fafc")))
+    _text(draw, (x + pad, y + pad), _short(stats.get("hostname", "host"), 26), lf,
+          rgba(widget.get("value_color", "#ffffff")))
     sf = font(max(8, int(widget.get("font_size", 14) * 0.78)), False)
     rows = [
         _short(stats.get("os", ""), 32),
@@ -487,8 +500,8 @@ def _draw_host(img, draw, widget, stats, rects):
         f"{stats.get('services', {}).get('docker_running', 0)} contenedores",
     ]
     for i, row in enumerate(rows):
-        draw.text((x + pad, y + pad + int(widget.get("font_size", 14) * 1.25) * (i + 1)),
-                  _short(row, 40), font=sf, fill=rgba(widget.get("label_color", "#94a3b8")))
+        _text(draw, (x + pad, y + pad + int(widget.get("font_size", 14) * 1.25) * (i + 1)),
+              _short(row, 40), sf, rgba(widget.get("label_color", "#c7d7ea")))
     rects[widget["id"]] = [x, y, w, h]
 
 
@@ -538,8 +551,8 @@ def _draw_services(img, draw, widget, rects):
 
     if not rows:
         empty = "(sin datos)" if source == "docker" else "(sin unidades)"
-        draw.text((x + pad, y + pad + title_h + row_h // 2), empty, font=small,
-                  fill=rgba(widget.get("label_color", "#94a3b8")), anchor="lm")
+        _text(draw, (x + pad, y + pad + title_h + row_h // 2), empty, small,
+              rgba(widget.get("label_color", "#c7d7ea")), anchor="lm")
         rects[widget["id"]] = [x, y, w, h]
         return
 
@@ -567,11 +580,11 @@ def _draw_services(img, draw, widget, rects):
         draw.ellipse([x + pad, cy - 3, x + pad + 6, cy + 3], fill=rgba(state_color))
         right_w = draw.textlength(right_text, font=small) + 4 if right_text else 0
         name = _ellipsize(draw, name, f, w - pad * 2 - 12 - right_w)
-        draw.text((x + pad + 12, cy), name, font=f,
-                  fill=rgba(widget.get("value_color", "#f8fafc")), anchor="lm")
+        _text(draw, (x + pad + 12, cy), name, f,
+              rgba(widget.get("value_color", "#ffffff")), anchor="lm")
         if right_text:
-            draw.text((x + w - pad, cy), right_text, font=small,
-                      fill=rgba(state_color), anchor="rm")
+            _text(draw, (x + w - pad, cy), right_text, small,
+                  rgba(state_color), anchor="rm")
     rects[widget["id"]] = [x, y, w, h]
 
 
