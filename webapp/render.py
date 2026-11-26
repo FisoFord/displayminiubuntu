@@ -158,7 +158,13 @@ def metric_data(stats: dict, metric: str) -> dict:
         text = f"{value:.0f}%"
         if busy is not None:
             text += f" · {busy:.0f}%act"
-        free = max(0.0, min(100.0, 100.0 - value))
+        free = max(0, min(100, int(round(100.0 - value))))
+        if free < 10:
+            free_color = "#fb7185"
+        elif free <= 30:
+            free_color = "#fbbf24"
+        else:
+            free_color = "#34d399"
         parts = []
         if disk.get("read_str"):
             parts.append(f"R {disk['read_str']}")
@@ -169,7 +175,7 @@ def metric_data(stats: dict, metric: str) -> dict:
         sub = " · ".join(parts) if parts else "sin datos E/S"
         type_label = disk.get("type_label") or "ALMACENAMIENTO"
         return {"value": value, "max": 100.0, "text": text, "unit": "",
-                "label": f"{type_label} ({free:.0f}% libre)", "sub": sub}
+                "label": type_label, "free": free, "free_color": free_color, "sub": sub}
     if metric == "temp":
         temp = stats.get("cpu", {}).get("temp")
         value = float(temp or 0)
@@ -381,11 +387,33 @@ def _draw_bar(img, draw, widget, data, rects):
     pad = 4
     bar_h = max(9, int(h * 0.36))
     bar_y = y + h - bar_h - pad
-    label = widget.get("label") or data["label"]
-    if widget.get("metric") == "disk" and label.strip().upper() in ("DISCO", "DISK"):
-        label = data["label"]
-    _title_row(draw, widget, x + pad, y + pad, w - pad * 2, label,
-               f"{data['text']} {data['unit']}".strip(), widget.get("color"))
+    size = max(10, int(widget.get("font_size", 18) * 0.76))
+    f = font(size, False)
+    vf = font(size, True)
+    value_text = f"{data['text']} {data['unit']}".strip()
+    if widget.get("metric") == "disk":
+        title_w = w - pad * 2
+        value_w = draw.textlength(value_text, font=vf)
+        max_label = max(20, title_w - value_w - 8)
+        type_label = _short(str(data["label"]).upper(), 30)
+        free = data.get("free")
+        suffix = f" ({free}% libre)".upper() if free is not None else ""
+        suffix_w = draw.textlength(suffix, font=f) if suffix else 0
+        if suffix_w > max_label:
+            suffix, suffix_w = "", 0
+        type_label = _ellipsize(draw, type_label, f, max(0, max_label - suffix_w))
+        type_w = draw.textlength(type_label, font=f)
+        _text(draw, (x + pad, y + pad), type_label, f,
+              rgba(widget.get("label_color", "#c7d7ea")))
+        if suffix and suffix_w:
+            _text(draw, (x + pad + type_w, y + pad), suffix, f,
+                  rgba(data.get("free_color", "#34d399")))
+        _text(draw, (x + w - pad, y + pad), value_text, vf,
+              rgba(widget.get("color", "#f59e0b")), anchor="ra")
+    else:
+        label = widget.get("label") or data["label"]
+        _title_row(draw, widget, x + pad, y + pad, w - pad * 2, label, value_text,
+                   widget.get("color"))
 
     draw.rounded_rectangle([x + pad, bar_y, x + w - pad - 1, bar_y + bar_h], radius=bar_h // 2,
                            fill=rgba(widget.get("track_color", "#1e293b")))
