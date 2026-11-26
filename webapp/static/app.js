@@ -7,6 +7,35 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 const FPS_OPTIONS = [0.5, 1, 2, 3];
 
+const DEMO_SERVICES = {
+  systemd: [
+    { unit: 'nginx.service', description: 'A high performance web server and a reverse proxy server', active: 'active', sub: 'running', cpu: 0.4, memory: 52428800, since: 'Wed 2026-11-25 09:12:00 -03' },
+    { unit: 'postgresql.service', description: 'PostgreSQL RDBMS', active: 'active', sub: 'running', cpu: 1.2, memory: 268435456, since: 'Wed 2026-11-25 09:12:03 -03' },
+    { unit: 'docker.service', description: 'Docker Application Container Engine', active: 'active', sub: 'running', cpu: 2.8, memory: 104857600, since: 'Wed 2026-11-25 09:12:05 -03' },
+    { unit: 'backup.service', description: 'Nightly backup job', active: 'failed', sub: 'failed', cpu: null, memory: null, since: 'Wed 2026-11-25 03:00:00 -03' },
+    { unit: 'ssh.service', description: 'OpenBSD Secure Shell server', active: 'active', sub: 'running', cpu: 0.1, memory: 8388608, since: 'Wed 2026-11-25 09:12:01 -03' },
+  ],
+  docker: [
+    { name: 'nextcloud', image: 'nextcloud:apache', state: 'running', status: 'Up 3 days', ports: '8081/tcp' },
+    { name: 'plex', image: 'plexinc/pms-docker', state: 'running', status: 'Up 3 days', ports: '32400/tcp' },
+    { name: 'watchtower', image: 'containrrr/watchtower', state: 'exited', status: 'Exited (0) 2 hours ago', ports: '' },
+    { name: 'redis-cache', image: 'redis:7-alpine', state: 'running', status: 'Up 5 days', ports: '6379/tcp' },
+  ],
+  systemd_error: '',
+  docker_error: '',
+  actions_allowed: true,
+  generated: 0,
+};
+
+const DEMO_STATS = {
+  hostname: 'ubuntu-server',
+  cpu: { percent: 34, count: 8, load: 0.62 },
+  ram: { percent: 58, used_str: '9.7 GB', total_str: '16.7 GB' },
+  disk: { percent: 61, used_str: '98 GB', total_str: '160 GB' },
+  net: { down_str: '1.2 MB/s', up_str: '180 KB/s' },
+  uptime_str: '8d 3h',
+};
+
 const S = {
   config: null,
   state: null,
@@ -14,6 +43,7 @@ const S = {
   presets: {},
   health: null,
   services: null,
+  demo: false,
   tab: 'design',
   lastPreview: 0,
   designStamp: Date.now(),
@@ -101,10 +131,14 @@ async function boot() {
     S.presets = presets;
     S.bgs = backgrounds.items || [];
     S.health = health;
+    S.demo = new URLSearchParams(location.search).has('demo');
+    if (S.demo) S.services = DEMO_SERVICES;
     renderAll();
     await pollState();
     setInterval(pollState, 1000);
     setInterval(() => { if (S.tab === 'services') loadServices(false); }, 4000);
+    const initial = location.hash.replace('#', '');
+    if (['design', 'services', 'settings'].includes(initial)) showTab(initial);
   } catch (err) {
     toast('Error cargando el panel: ' + err.message, true);
   }
@@ -120,6 +154,9 @@ function renderAll() {
 /* ------------------------------------------------------------------- tabs */
 function showTab(name) {
   S.tab = name;
+  if (location.hash !== '#' + name) {
+    history.replaceState(null, '', '#' + name);
+  }
   $$('.tab-btn').forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === name));
   $$('.tab-panel').forEach((panel) => panel.classList.add('hidden'));
   const target = $('#tab-' + name);
@@ -154,7 +191,7 @@ function updateStatus(st) {
   $('#pushText').textContent = d.frames
     ? d.frames + ' frames' + (d.push_ms ? ' · ' + d.push_ms + ' ms' : '')
     : '';
-  const stats = st.stats || {};
+  const stats = (S.demo ? DEMO_STATS : (st.stats || {}));
   if (stats.cpu) {
     $('#previewInfo').textContent =
       (stats.hostname || '') + ' · CPU ' + Number(stats.cpu.percent).toFixed(0) + '%' +
@@ -373,6 +410,10 @@ $('#bgControls').addEventListener('input', (event) => {
 
 /* ---------------------------------------------------------------- services */
 async function loadServices(force) {
+  if (S.demo) {
+    renderServices();
+    return;
+  }
   try {
     S.services = await getJSON('/api/services' + (force ? '?force=1' : ''));
     renderServices();
@@ -387,7 +428,7 @@ function servicesWidget() {
 }
 
 function renderSvcCards() {
-  const stats = S.state && S.state.stats;
+  const stats = S.demo ? DEMO_STATS : (S.state && S.state.stats);
   if (!stats || !stats.cpu) return;
   const cards = [
     ['CPU', Number(stats.cpu.percent).toFixed(0) + '%', (stats.cpu.count || '?') + ' hilos'],

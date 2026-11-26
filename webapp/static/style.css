@@ -247,7 +247,8 @@ main { padding: 22px; max-width: 1500px; margin: 0 auto; }
 /* ---------------------------------------------------------------- designs */
 .designs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 210px));
+  justify-content: space-between;
   gap: 12px;
 }
 .design-card {
