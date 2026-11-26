@@ -80,16 +80,16 @@ def _base_widget(wtype: str, wid: str, **kw):
 
 def _preset_proxmox():
     return [
-        _base_widget("clock", "clock", x=16, y=10, w=288, h=52, font_size=22),
+        _base_widget("clock", "clock", x=16, y=8, w=288, h=58, font_size=32),
         _base_widget("ring", "cpu", metric="cpu", x=16, y=70, w=132, h=132,
-                     color="#22d3ee", font_size=24, label="CPU"),
+                     color="#22d3ee", font_size=26, label="CPU"),
         _base_widget("ring", "ram", metric="ram", x=172, y=70, w=132, h=132,
-                     color="#a78bfa", font_size=24, label="RAM"),
-        _base_widget("bar", "netdown", metric="net_down", x=16, y=210, w=288, h=62,
-                     color="#34d399", font_size=16, label="RED BAJADA"),
-        _base_widget("bar", "disk", metric="disk", x=16, y=278, w=288, h=62,
-                     color="#f59e0b", font_size=16, label="DISCO"),
-        _base_widget("services", "svc", x=16, y=348, w=288, h=118, font_size=13,
+                     color="#a78bfa", font_size=26, label="RAM"),
+        _base_widget("bar", "netdown", metric="net_down", x=16, y=208, w=288, h=62,
+                     color="#34d399", font_size=18, label="RED BAJADA"),
+        _base_widget("bar", "disk", metric="disk", x=16, y=274, w=288, h=62,
+                     color="#f59e0b", font_size=18, label="DISCO"),
+        _base_widget("services", "svc", x=16, y=342, w=288, h=130, font_size=15,
                      label="SERVICIOS", units=[]),
     ]
 
@@ -114,38 +114,38 @@ def _preset_minimal():
 
 def _preset_neon():
     return [
-        _base_widget("clock", "clock", x=16, y=8, w=288, h=48, font_size=20),
-        _base_widget("ring", "cpu", metric="cpu", x=16, y=64, w=132, h=132,
-                     color="#22d3ee", font_size=24, label="CPU"),
-        _base_widget("ring", "temp", metric="temp", x=172, y=64, w=132, h=132,
-                     color="#fb7185", font_size=22, label="TEMP"),
-        _base_widget("spark", "net", metric="net_down", x=16, y=204, w=288, h=78,
-                     color="#34d399", font_size=13, label="RED BAJADA"),
-        _base_widget("spark", "cpuh", metric="cpu", x=16, y=290, w=288, h=78,
-                     color="#a78bfa", font_size=13, label="HISTORIAL CPU"),
-        _base_widget("bar", "disk", metric="disk", x=16, y=376, w=288, h=48,
-                     color="#f59e0b", font_size=14, label="DISCO"),
-        _base_widget("text", "host", x=16, y=432, w=288, h=38, font_size=13,
+        _base_widget("clock", "clock", x=16, y=6, w=288, h=58, font_size=32),
+        _base_widget("ring", "cpu", metric="cpu", x=16, y=70, w=132, h=132,
+                     color="#22d3ee", font_size=26, label="CPU"),
+        _base_widget("ring", "temp", metric="temp", x=172, y=70, w=132, h=132,
+                     color="#fb7185", font_size=24, label="TEMP"),
+        _base_widget("spark", "net", metric="net_down", x=16, y=208, w=288, h=80,
+                     color="#34d399", font_size=15, label="RED BAJADA"),
+        _base_widget("spark", "cpuh", metric="cpu", x=16, y=294, w=288, h=80,
+                     color="#a78bfa", font_size=15, label="HISTORIAL CPU"),
+        _base_widget("bar", "disk", metric="disk", x=16, y=380, w=288, h=48,
+                     color="#f59e0b", font_size=16, label="DISCO"),
+        _base_widget("text", "host", x=16, y=434, w=288, h=36, font_size=14,
                      text="{hostname}  ·  {uptime}", align="center",
-                     color="#94a3b8"),
+                     color="#f1f5f9"),
     ]
 
 
 def _preset_classic():
     return [
-        _base_widget("text", "title", x=16, y=12, w=288, h=40, font_size=18,
-                     text="{hostname}", color="#f8fafc"),
-        _base_widget("bar", "cpu", metric="cpu", x=16, y=70, w=288, h=54,
-                     color="#22d3ee", font_size=15, label="CPU"),
-        _base_widget("bar", "ram", metric="ram", x=16, y=132, w=288, h=54,
-                     color="#a78bfa", font_size=15, label="RAM"),
-        _base_widget("bar", "disk", metric="disk", x=16, y=194, w=288, h=54,
-                     color="#f59e0b", font_size=15, label="DISCO"),
-        _base_widget("spark", "net", metric="net_down", x=16, y=260, w=288, h=86,
-                     color="#34d399", font_size=13, label="RED BAJADA"),
-        _base_widget("text", "rows", x=16, y=356, w=288, h=104, font_size=14,
+        _base_widget("text", "title", x=16, y=10, w=288, h=46, font_size=22,
+                     text="{hostname}", color="#ffffff"),
+        _base_widget("bar", "cpu", metric="cpu", x=16, y=62, w=288, h=54,
+                     color="#22d3ee", font_size=18, label="CPU"),
+        _base_widget("bar", "ram", metric="ram", x=16, y=122, w=288, h=54,
+                     color="#a78bfa", font_size=18, label="RAM"),
+        _base_widget("bar", "disk", metric="disk", x=16, y=182, w=288, h=54,
+                     color="#f59e0b", font_size=18, label="DISCO"),
+        _base_widget("spark", "net", metric="net_down", x=16, y=242, w=288, h=90,
+                     color="#34d399", font_size=15, label="RED BAJADA"),
+        _base_widget("text", "rows", x=16, y=340, w=288, h=120, font_size=15,
                      text="CPU   {cpu}\nRAM   {ram_used} / {ram_total}\nRED   {net_down}  ↓   {net_up} ↑\nUPTIME {uptime}",
-                     color="#e2e8f0"),
+                     color="#f1f5f9"),
     ]
 
 

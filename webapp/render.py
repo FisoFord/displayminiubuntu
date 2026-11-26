@@ -439,14 +439,26 @@ def _draw_metric(img, draw, widget, data, rects):
 def _draw_text(img, draw, widget, stats, rects):
     x, y, w, h = widget["x"], widget["y"], widget["w"], widget["h"]
     text = format_template(widget.get("text", ""), stats)
-    size = widget.get("font_size", 16)
-    f = font(size, widget.get("bold", False))
+    lines = text.splitlines()[:20] or [""]
+    bold = widget.get("bold", False)
     align = widget.get("align", "left")
     anchor_x = {"left": x, "center": x + w // 2, "right": x + w}[align]
     anchor = {"left": "la", "center": "ma", "right": "ra"}[align]
-    color = rgba(widget.get("color", "#f8fafc"))
+    color = rgba(widget.get("color", "#ffffff"))
+
+    # Reduce el tamano hasta que el bloque quepa a lo ancho y a lo alto
+    size = max(8, int(widget.get("font_size", 16)))
+    while size > 8:
+        candidate = font(size, bold)
+        line_h = int(size * 1.35)
+        widest = max(draw.textlength(line, font=candidate) for line in lines)
+        if widest <= w and line_h * len(lines) <= h:
+            break
+        size -= 1
+
+    f = font(size, bold)
     line_h = int(size * 1.35)
-    for row, line in enumerate(text.splitlines()[:20]):
+    for row, line in enumerate(lines):
         _text(draw, (anchor_x, y + row * line_h), line, f, color, anchor=anchor)
     rects[widget["id"]] = [x, y, w, h]
 
