@@ -121,7 +121,7 @@ Para añadir más fondos de serie, colócalos en esa carpeta y actualiza
 
 ```bash
 sudo apt update && sudo apt install -y git
-git clone https://github.com/TU_USUARIO/TU_REPO.git ~/driverMiniDisplay
+git clone https://github.com/FisoFord/displayminiubuntu.git ~/driverMiniDisplay
 cd ~/driverMiniDisplay/webapp
 chmod +x install.sh
 sudo ./install.sh --actions

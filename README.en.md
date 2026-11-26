@@ -121,7 +121,7 @@ To ship more default backgrounds, drop them in that folder and update
 
 ```bash
 sudo apt update && sudo apt install -y git
-git clone https://github.com/YOUR_USER/YOUR_REPO.git ~/driverMiniDisplay
+git clone https://github.com/FisoFord/displayminiubuntu.git ~/driverMiniDisplay
 cd ~/driverMiniDisplay/webapp
 chmod +x install.sh
 sudo ./install.sh --actions

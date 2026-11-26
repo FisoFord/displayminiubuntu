@@ -122,7 +122,7 @@ tutti i file).
 
 ```bash
 sudo apt update && sudo apt install -y git
-git clone https://github.com/TUO_UTENTE/TUO_REPO.git ~/driverMiniDisplay
+git clone https://github.com/FisoFord/displayminiubuntu.git ~/driverMiniDisplay
 cd ~/driverMiniDisplay/webapp
 chmod +x install.sh
 sudo ./install.sh --actions

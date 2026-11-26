@@ -120,7 +120,7 @@ arquivos).
 
 ```bash
 sudo apt update && sudo apt install -y git
-git clone https://github.com/SEU_USUARIO/SEU_REPO.git ~/driverMiniDisplay
+git clone https://github.com/FisoFord/displayminiubuntu.git ~/driverMiniDisplay
 cd ~/driverMiniDisplay/webapp
 chmod +x install.sh
 sudo ./install.sh --actions

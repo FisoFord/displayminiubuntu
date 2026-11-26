@@ -123,7 +123,7 @@ lister tous les fichiers).
 
 ```bash
 sudo apt update && sudo apt install -y git
-git clone https://github.com/VOTRE_UTILISATEUR/VOTRE_DEPOT.git ~/driverMiniDisplay
+git clone https://github.com/FisoFord/displayminiubuntu.git ~/driverMiniDisplay
 cd ~/driverMiniDisplay/webapp
 chmod +x install.sh
 sudo ./install.sh --actions
