@@ -154,8 +154,27 @@ def metric_data(stats: dict, metric: str) -> dict:
     if metric == "disk":
         disk = stats.get("disk", {})
         value = float(disk.get("percent") or 0)
-        return {"value": value, "max": 100.0, "text": f"{value:.0f}", "unit": "%",
-                "label": label, "sub": f"{disk.get('used_str', '?')} / {disk.get('total_str', '?')}"}
+        busy = disk.get("busy")
+        text = f"{value:.0f}%"
+        if busy is not None:
+            text += f" · {busy:.0f}%act"
+        rate = None
+        if (disk.get("write_bps") or 0) >= (disk.get("read_bps") or 0):
+            rate = disk.get("write_str")
+        else:
+            rate = disk.get("read_str")
+        if rate and ((disk.get("write_bps") or 0) > 0 or (disk.get("read_bps") or 0) > 0):
+            text += f" · {rate}"
+        parts = []
+        if disk.get("read_str"):
+            parts.append(f"R {disk['read_str']}")
+        if disk.get("write_str"):
+            parts.append(f"W {disk['write_str']}")
+        if disk.get("latency") is not None:
+            parts.append(f"{disk['latency']:.0f} ms")
+        sub = " · ".join(parts) if parts else "sin datos E/S"
+        return {"value": value, "max": 100.0, "text": text, "unit": "",
+                "label": disk.get("type_label") or "ALMACENAMIENTO", "sub": sub}
     if metric == "temp":
         temp = stats.get("cpu", {}).get("temp")
         value = float(temp or 0)
@@ -364,7 +383,10 @@ def _draw_bar(img, draw, widget, data, rects):
     pad = 4
     bar_h = max(9, int(h * 0.36))
     bar_y = y + h - bar_h - pad
-    _title_row(draw, widget, x + pad, y + pad, w - pad * 2, widget.get("label") or data["label"],
+    label = widget.get("label") or data["label"]
+    if widget.get("metric") == "disk" and label.strip().upper() in ("DISCO", "DISK"):
+        label = data["label"]
+    _title_row(draw, widget, x + pad, y + pad, w - pad * 2, label,
                f"{data['text']} {data['unit']}".strip(), widget.get("color"))
 
     draw.rounded_rectangle([x + pad, bar_y, x + w - pad - 1, bar_y + bar_h], radius=bar_h // 2,
@@ -492,9 +514,11 @@ def _draw_text(img, draw, widget, stats, rects):
 def _draw_clock(img, draw, widget, stats, rects):
     x, y, w, h = widget["x"], widget["y"], widget["w"], widget["h"]
     pad = 4
-    fs = max(10, int(widget.get("font_size", 34)))
-    sf = font(max(8, int(fs * 0.42)), False)
-    sf_size = getattr(sf, "size", max(8, int(fs * 0.42)))
+    fs = max(10, int(widget.get("font_size", 38)))
+    # La fecha/hostname/GPU no crecen con la hora; se limita su alto para
+    # que las tres lineas sigan cabiendo en el reloj.
+    sf_size = max(8, min(int(fs * 0.42), int(h / (3 * 1.35))))
+    sf = font(sf_size, False)
 
     max_right = int(w * 0.58)
     lines = [f"{stats.get('weekday', '')} {stats.get('date', '')}".strip(),

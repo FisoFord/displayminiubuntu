@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import collections
 import glob
+import json
 import os
 import platform
 import shutil
@@ -74,6 +75,89 @@ def _read_int(path) -> int | None:
         return int(Path(path).read_text().strip())
     except (OSError, ValueError):
         return None
+
+
+_STORAGE_LABELS = {
+    "hdd": "DISCO DURO",
+    "ssd": "SSD",
+    "nvme": "SSD NVME",
+    "unknown": "ALMACENAMIENTO",
+}
+
+
+def _unknown_storage():
+    return {"type": "unknown", "label": _STORAGE_LABELS["unknown"], "device": None}
+
+
+def _storage_windows():
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-CimInstance -Namespace root/Microsoft/Windows/Storage -ClassName MSFT_PhysicalDisk "
+             "| Select-Object -First 1 MediaType,BusType | ConvertTo-Json -Compress"],
+            capture_output=True, text=True, timeout=10)
+        data = json.loads((proc.stdout or "").strip() or "{}")
+    except Exception:
+        return _unknown_storage()
+    if isinstance(data, list):
+        data = data[0] if data else {}
+    try:
+        media = int(data.get("MediaType") or 0)
+        bus = int(data.get("BusType") or 0)
+    except (TypeError, ValueError):
+        media, bus = 0, 0
+    if media == 4:
+        kind = "nvme" if bus == 17 else "ssd"
+    elif media == 3:
+        kind = "hdd"
+    else:
+        kind = "unknown"
+    return {"type": kind, "label": _STORAGE_LABELS[kind], "device": None}
+
+
+def _storage_linux():
+    try:
+        proc = subprocess.run(
+            ["lsblk", "-J", "-o", "NAME,TYPE,ROTA,MOUNTPOINT"],
+            capture_output=True, text=True, timeout=5)
+        data = json.loads(proc.stdout or "{}")
+    except Exception:
+        return _unknown_storage()
+
+    def walk(devices, top=None):
+        for dev in devices or []:
+            current = dev if top is None else top
+            if dev.get("mountpoint") == "/":
+                return current
+            found = walk(dev.get("children") or [], current)
+            if found:
+                return found
+        return None
+
+    root = walk(data.get("blockdevices") or [])
+    if not root:
+        return _unknown_storage()
+    name = str(root.get("name") or "")
+    rotational = root.get("rota")
+    try:
+        rotational = int(rotational)
+    except (TypeError, ValueError):
+        rotational = None
+    if name.startswith("nvme"):
+        kind = "nvme"
+    elif rotational == 1:
+        kind = "hdd"
+    elif rotational == 0:
+        kind = "ssd"
+    else:
+        kind = "unknown"
+    return {"type": kind, "label": _STORAGE_LABELS[kind], "device": name or None}
+
+
+def _storage_info():
+    if psutil is None:
+        return _unknown_storage()
+    return _storage_windows() if os.name == "nt" else _storage_linux()
 
 
 class GpuReader:
@@ -217,6 +301,9 @@ class Collector(threading.Thread):
         self._last_net = None
         self._last_net_ts = None
         self._gpu = GpuReader()
+        self.storage = _storage_info()
+        self._last_disk = None
+        self._last_disk_ts = None
         self.hostname = socket.gethostname()
         self.os_name = _os_pretty_name()
         self.kernel = platform.release()
@@ -282,6 +369,65 @@ class Collector(threading.Thread):
         except Exception:
             return 0.0, 0, 0
 
+    def _disk_io(self):
+        if psutil is None:
+            return {}
+        try:
+            per_disk = psutil.disk_io_counters(perdisk=True)
+        except Exception:
+            per_disk = None
+        counters = None
+        device = self.storage.get("device")
+        if per_disk and device:
+            counters = per_disk.get(device)
+            if counters is None:
+                counters = per_disk.get(str(device).replace("/dev/", ""))
+        if counters is None:
+            try:
+                counters = psutil.disk_io_counters()
+            except Exception:
+                counters = None
+        if counters is None:
+            return {}
+
+        now = time.monotonic()
+        if self._last_disk is None:
+            self._last_disk = counters
+            self._last_disk_ts = now
+            return {
+                "read_bps": 0.0, "write_bps": 0.0, "read_str": "0 B/s",
+                "write_str": "0 B/s", "read_iops": 0.0, "write_iops": 0.0,
+                "busy": None, "latency": None,
+            }
+
+        elapsed = max(now - self._last_disk_ts, 0.001)
+        prev = self._last_disk
+        read_bytes = max((counters.read_bytes or 0) - (prev.read_bytes or 0), 0)
+        write_bytes = max((counters.write_bytes or 0) - (prev.write_bytes or 0), 0)
+        read_count = max((counters.read_count or 0) - (prev.read_count or 0), 0)
+        write_count = max((counters.write_count or 0) - (prev.write_count or 0), 0)
+        read_time = max((counters.read_time or 0) - (prev.read_time or 0), 0)
+        write_time = max((counters.write_time or 0) - (prev.write_time or 0), 0)
+        self._last_disk = counters
+        self._last_disk_ts = now
+
+        read_bps = read_bytes / elapsed
+        write_bps = write_bytes / elapsed
+        total_ops = read_count + write_count
+        total_time = read_time + write_time  # milisegundos acumulados
+        busy = min(100.0, total_time / (elapsed * 1000.0) * 100.0) if total_time > 0 else None
+        latency = (total_time / total_ops) if total_ops > 0 and total_time > 0 else None
+        return {
+            "read_bps": read_bps,
+            "write_bps": write_bps,
+            "read_str": human_rate(read_bps),
+            "write_str": human_rate(write_bps),
+            "read_iops": read_count / elapsed,
+            "write_iops": write_count / elapsed,
+            "busy": busy,
+            "latency": latency,
+        }
+
     def _services_summary(self):
         try:
             from services import summary
@@ -326,6 +472,7 @@ class Collector(threading.Thread):
                 pass
 
         disk_percent, disk_used, disk_total = self._disk_usage()
+        disk_io = self._disk_io()
         net_down, net_up = self._net_rates()
         temp, temp_source = self._cpu_temp()
         gpu = self._gpu.read()
@@ -363,6 +510,17 @@ class Collector(threading.Thread):
                 "total": disk_total,
                 "used_str": human_bytes(disk_used),
                 "total_str": human_bytes(disk_total),
+                "type": self.storage.get("type", "unknown"),
+                "type_label": self.storage.get("label", _STORAGE_LABELS["unknown"]),
+                "device": self.storage.get("device"),
+                "read_bps": disk_io.get("read_bps", 0.0),
+                "write_bps": disk_io.get("write_bps", 0.0),
+                "read_str": disk_io.get("read_str", "0 B/s"),
+                "write_str": disk_io.get("write_str", "0 B/s"),
+                "read_iops": disk_io.get("read_iops", 0.0),
+                "write_iops": disk_io.get("write_iops", 0.0),
+                "busy": disk_io.get("busy"),
+                "latency": disk_io.get("latency"),
             },
             "net": {
                 "down": net_down,

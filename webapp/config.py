@@ -83,7 +83,7 @@ def _base_widget(wtype: str, wid: str, **kw):
 
 def _preset_proxmox():
     return [
-        _base_widget("clock", "clock", x=16, y=8, w=288, h=58, font_size=32),
+        _base_widget("clock", "clock", x=16, y=8, w=288, h=58, font_size=38),
         _base_widget("ring", "cpu", metric="cpu", x=16, y=70, w=132, h=132,
                      color="#22d3ee", font_size=26, label="CPU"),
         _base_widget("ring", "ram", metric="ram", x=172, y=70, w=132, h=132,
@@ -99,7 +99,7 @@ def _preset_proxmox():
 
 def _preset_minimal():
     return [
-        _base_widget("clock", "clock", x=16, y=6, w=288, h=58, font_size=34),
+        _base_widget("clock", "clock", x=16, y=6, w=288, h=58, font_size=38),
         _base_widget("metric", "cpu", metric="cpu", x=16, y=68, w=288, h=100,
                      font_size=60, label="USO DE CPU", color="#22d3ee"),
         _base_widget("bar", "ram", metric="ram", x=16, y=174, w=288, h=36,
@@ -119,7 +119,7 @@ def _preset_minimal():
 
 def _preset_neon():
     return [
-        _base_widget("clock", "clock", x=16, y=6, w=288, h=58, font_size=32),
+        _base_widget("clock", "clock", x=16, y=6, w=288, h=58, font_size=38),
         _base_widget("ring", "cpu", metric="cpu", x=16, y=70, w=132, h=132,
                      color="#22d3ee", font_size=26, label="CPU"),
         _base_widget("ring", "temp", metric="temp", x=172, y=70, w=132, h=132,

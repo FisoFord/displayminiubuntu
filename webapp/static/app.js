@@ -449,6 +449,15 @@ function renderSvcCards() {
   const stats = S.demo ? DEMO_STATS : (S.state && S.state.stats);
   if (!stats || !stats.cpu) return;
   const gpu = stats.gpu || {};
+  const disk = stats.disk || {};
+  const diskLabel = t('storage.' + (disk.type || 'unknown'));
+  const diskParts = [];
+  if (disk.used_str && disk.total_str) diskParts.push(disk.used_str + ' / ' + disk.total_str);
+  if (disk.read_str) diskParts.push('R ' + disk.read_str);
+  if (disk.write_str) diskParts.push('W ' + disk.write_str);
+  if (disk.busy != null) diskParts.push(disk.busy.toFixed(0) + '% ' + t('services.busy'));
+  if (disk.latency != null) diskParts.push(disk.latency.toFixed(0) + ' ms');
+  const diskSub = diskParts.length ? diskParts.join(' · ') : t('health.none');
   const gpuValue = gpu.percent != null ? Math.round(gpu.percent) + '%' : '—';
   const gpuParts = [];
   if (gpu.name) gpuParts.push(gpu.name);
@@ -460,7 +469,7 @@ function renderSvcCards() {
   const cards = [
     [t('services.cpu'), Number(stats.cpu.percent).toFixed(0) + '%', t('services.threads', { count: stats.cpu.count || '?' })],
     [t('services.ram'), Number(stats.ram.percent).toFixed(0) + '%', stats.ram.used_str + ' / ' + stats.ram.total_str],
-    [t('services.disk'), Number(stats.disk.percent).toFixed(0) + '%', stats.disk.used_str + ' / ' + stats.disk.total_str],
+    [diskLabel, Number(stats.disk.percent).toFixed(0) + '%', diskSub],
     [t('services.netDown'), stats.net.down_str, t('services.netUp') + ' ' + stats.net.up_str],
   ];
   if (gpu.available) {
