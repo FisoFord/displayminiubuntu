@@ -33,6 +33,8 @@ const DEMO_STATS = {
   ram: { percent: 58, used_str: '9.7 GB', total_str: '16.7 GB' },
   disk: { percent: 61, used_str: '98 GB', total_str: '160 GB' },
   net: { down_str: '1.2 MB/s', up_str: '180 KB/s' },
+  gpu: { name: 'NVIDIA GeForce RTX 3060', percent: 18, temp: 55,
+         memory_used_str: '2.1 GB', memory_total_str: '12 GB' },
   uptime_str: '8d 3h',
 };
 
@@ -113,7 +115,7 @@ async function saveNow() {
   try {
     await putJSON('/api/config', S.config);
   } catch (err) {
-    toast('No se pudo guardar: ' + err.message, true);
+    toast(t('toast.saveError', { error: err.message }), true);
   } finally {
     S.saving = false;
     if (S.pendingSave) { S.pendingSave = false; saveNow(); }
@@ -133,15 +135,28 @@ async function boot() {
     S.health = health;
     S.demo = new URLSearchParams(location.search).has('demo');
     if (S.demo) S.services = DEMO_SERVICES;
+    applyStaticTranslations();
+    buildLangSelect();
     renderAll();
     await pollState();
     setInterval(pollState, 1000);
     setInterval(() => { if (S.tab === 'services') loadServices(false); }, 4000);
     const initial = location.hash.replace('#', '');
     if (['design', 'services', 'settings'].includes(initial)) showTab(initial);
+    $('#langSelect').addEventListener('change', onLanguageChange);
   } catch (err) {
-    toast('Error cargando el panel: ' + err.message, true);
+    toast(t('toast.loadError', { error: err.message }), true);
   }
+}
+
+function onLanguageChange(event) {
+  if (!setLang(event.target.value)) return;
+  buildLangSelect();
+  renderAll();
+  renderSvcCards();
+  if (S.services) renderServices();
+  if (S.tab === 'settings') loadHealth();
+  if (S.state) updateStatus(S.state);
 }
 
 function renderAll() {
@@ -186,10 +201,12 @@ function updateStatus(st) {
   dot.className = 'dot ' + (d.connected ? 'on' : (d.last_error ? 'err' : ''));
   dot.title = d.last_error || '';
   $('#deviceText').textContent = d.connected
-    ? 'panel · ' + (d.port || 'conectado')
-    : (d.last_error ? 'panel sin conexión' : 'panel desconectado');
+    ? t('status.panel', { port: d.port || '' })
+    : (d.last_error ? t('status.offline') : t('status.disconnected'));
   $('#pushText').textContent = d.frames
-    ? d.frames + ' frames' + (d.push_ms ? ' · ' + d.push_ms + ' ms' : '')
+    ? (d.push_ms
+      ? t('status.frames', { frames: d.frames, ms: d.push_ms })
+      : t('status.framesShort', { frames: d.frames }))
     : '';
   const stats = (S.demo ? DEMO_STATS : (st.stats || {}));
   if (stats.cpu) {
@@ -200,7 +217,7 @@ function updateStatus(st) {
 }
 
 $('#pushBtn').addEventListener('click', async () => {
-  try { await postJSON('/api/display/push'); toast('Frame enviado'); }
+  try { await postJSON('/api/display/push'); toast(t('toast.push')); }
   catch (err) { toast(err.message, true); }
 });
 
@@ -209,18 +226,19 @@ function renderDesigns() {
   const grid = $('#designGrid');
   if (!grid) return;
   const current = S.config.design;
-  grid.innerHTML = Object.entries(S.presets).map(([key, preset]) => `
+  grid.innerHTML = Object.entries(S.presets).map(([key, preset]) => {
+    const label = t('design.' + key);
+    return `
     <button type="button" class="design-card ${current === key ? 'selected' : ''}" data-design="${esc(key)}">
       <span class="check" aria-hidden="true">✓</span>
       <img src="/api/presets/${encodeURIComponent(key)}/preview.png?v=${S.designStamp}"
-           alt="Diseño ${esc(preset.label)}" loading="lazy">
-      <span class="dname">${esc(preset.label)}</span>
-    </button>`).join('');
+           alt="${esc(label)}" loading="lazy">
+      <span class="dname">${esc(label)}</span>
+    </button>`;
+  }).join('');
   const hint = $('#designHint');
   if (hint) {
-    hint.textContent = current === 'custom'
-      ? 'La configuración actual no coincide con ninguno de los cuatro diseños. Elige uno para reemplazarla.'
-      : 'Elige uno de los cuatro diseños. El fondo, el brillo y las imágenes se ajustan debajo.';
+    hint.textContent = current === 'custom' ? t('design.customHint') : t('design.hint');
   }
 }
 
@@ -242,7 +260,7 @@ $('#designGrid').addEventListener('click', async (event) => {
     renderDesigns();
     S.lastPreview = 0;
     if (S.services) renderServices();
-    toast('Diseño «' + ((S.presets[name] || {}).label || name) + '» aplicado');
+    toast(t('design.applied', { name: t('design.' + name) }));
   } catch (err) { toast(err.message, true); }
 });
 
@@ -254,16 +272,16 @@ function renderDisplaySettings() {
   $('#displaySettings').innerHTML = `
     <label class="fld check wide">
       <input type="checkbox" data-disp="enabled" ${d.enabled ? 'checked' : ''}>
-      Enviar frames al panel USB
+      ${t('display.enabled')}
     </label>
     <label class="fld">
-      <span>Brillo <b id="brightVal">${d.brightness}%</b></span>
+      <span>${t('display.brightness')} <b id="brightVal">${d.brightness}%</b></span>
       <input type="range" min="0" max="100" step="1" data-disp="brightness" value="${d.brightness}">
     </label>
-    <label class="fld"><span>Refresco</span>
+    <label class="fld"><span>${t('display.fps')}</span>
       <select data-disp="fps">${options}</select>
     </label>
-    <p class="hint wide">La revisión A se calienta: mantén el brillo en 20–50 %.</p>`;
+    <p class="hint wide">${t('display.hint')}</p>`;
 }
 
 $('#displaySettings').addEventListener('input', (event) => {
@@ -283,16 +301,16 @@ function renderGallery() {
   const selected = new Set(S.config.background.images || []);
   const gallery = $('#bgGallery');
   $('#bgCount').textContent = S.bgs.length
-    ? S.bgs.length + ' imagen(es) · ' + selected.size + ' en rotación'
-    : 'sin imágenes';
+    ? t('bg.count', { total: S.bgs.length, selected: selected.size })
+    : t('bg.none');
   if (!S.bgs.length) {
-    gallery.innerHTML = '<p class="hint">Sube una o varias imágenes para usarlas como fondo decorativo.</p>';
+    gallery.innerHTML = `<p class="hint">${t('bg.empty')}</p>`;
     return;
   }
   gallery.innerHTML = S.bgs.map((item) => `
     <div class="bg-item ${selected.has(item.file) ? 'in' : ''}" data-file="${esc(item.file)}">
       <img src="${esc(item.url)}" loading="lazy" alt="">
-      <button class="bg-del" data-del="${esc(item.file)}" title="Eliminar">×</button>
+      <button class="bg-del" data-del="${esc(item.file)}" title="${esc(t('bg.delete'))}">×</button>
       <label class="bg-meta">
         <input type="checkbox" data-pick="${esc(item.file)}" ${selected.has(item.file) ? 'checked' : ''}>
         <span title="${esc(item.name)}">${esc(item.name)}</span>
@@ -308,7 +326,7 @@ $('#bgGallery').addEventListener('change', (event) => {
   if (event.target.checked && index < 0) images.push(file);
   if (!event.target.checked && index >= 0) images.splice(index, 1);
   event.target.closest('.bg-item').classList.toggle('in', event.target.checked);
-  $('#bgCount').textContent = S.bgs.length + ' imagen(es) · ' + images.length + ' en rotación';
+  $('#bgCount').textContent = t('bg.count', { total: S.bgs.length, selected: images.length });
   scheduleSave();
   refreshDesignThumbs();
 });
@@ -316,14 +334,14 @@ $('#bgGallery').addEventListener('change', (event) => {
 $('#bgGallery').addEventListener('click', async (event) => {
   const file = event.target.dataset.del;
   if (!file) return;
-  if (!confirm('¿Eliminar esta imagen del servidor?')) return;
+  if (!confirm(t('bg.deleteConfirm'))) return;
   try {
     await api('/api/backgrounds/' + encodeURIComponent(file), { method: 'DELETE' });
     S.bgs = S.bgs.filter((item) => item.file !== file);
     S.config.background.images = (S.config.background.images || []).filter((f) => f !== file);
     renderGallery();
     refreshDesignThumbs();
-    toast('Imagen eliminada');
+    toast(t('bg.deleted'));
   } catch (err) { toast(err.message, true); }
 });
 
@@ -333,7 +351,7 @@ async function uploadFiles(files) {
   const data = new FormData();
   files.forEach((file) => data.append('files', file));
   try {
-    toast('Subiendo ' + files.length + ' imagen(es)…');
+    toast(t('bg.uploading', { count: files.length }));
     const res = await api('/api/backgrounds', { method: 'POST', body: data });
     if (res.items && res.items.length) {
       S.bgs = S.bgs.concat(res.items);
@@ -342,10 +360,10 @@ async function uploadFiles(files) {
       });
       renderGallery();
       refreshDesignThumbs(300);
-      toast(res.items.length + ' imagen(es) añadida(s)');
+      toast(t('bg.uploaded', { count: res.items.length }));
     }
     if (res.errors && res.errors.length) toast(res.errors.join(' · '), true);
-  } catch (err) { toast('Error subiendo: ' + err.message, true); }
+  } catch (err) { toast(t('bg.uploadError', { error: err.message }), true); }
 }
 
 $('#bgUpload').addEventListener('change', (event) => {
@@ -366,25 +384,25 @@ function renderBgControls() {
   const b = S.config.background;
   const pct = (v) => Math.round(Number(v) * 100);
   $('#bgControls').innerHTML = `
-    <label class="fld"><span>Opacidad <b id="bgOpacityVal">${pct(b.opacity)}%</b></span>
+    <label class="fld"><span>${t('bg.opacity')} <b id="bgOpacityVal">${pct(b.opacity)}%</b></span>
       <input type="range" min="0" max="100" data-bg="opacity" data-scale="100" value="${pct(b.opacity)}"></label>
-    <label class="fld"><span>Tinte <b id="bgTintVal">${pct(b.tint_strength)}%</b></span>
+    <label class="fld"><span>${t('bg.tintStrength')} <b id="bgTintVal">${pct(b.tint_strength)}%</b></span>
       <input type="range" min="0" max="100" data-bg="tint_strength" data-scale="100" value="${pct(b.tint_strength)}"></label>
-    <label class="fld"><span>Color de tinte</span>
+    <label class="fld"><span>${t('bg.tintColor')}</span>
       <input type="color" data-bg="tint" value="${hex6(b.tint)}"></label>
-    <label class="fld"><span>Ajuste</span>
+    <label class="fld"><span>${t('bg.fit')}</span>
       <select data-bg="fit">
-        <option value="cover" ${b.fit === 'cover' ? 'selected' : ''}>Cubrir (recorta)</option>
-        <option value="contain" ${b.fit === 'contain' ? 'selected' : ''}>Contener (borde)</option>
-        <option value="stretch" ${b.fit === 'stretch' ? 'selected' : ''}>Estirar</option>
+        <option value="cover" ${b.fit === 'cover' ? 'selected' : ''}>${t('bg.fitCover')}</option>
+        <option value="contain" ${b.fit === 'contain' ? 'selected' : ''}>${t('bg.fitContain')}</option>
+        <option value="stretch" ${b.fit === 'stretch' ? 'selected' : ''}>${t('bg.fitStretch')}</option>
       </select></label>
-    <label class="fld"><span>Desenfoque <b id="bgBlurVal">${Number(b.blur).toFixed(1)}</b></span>
+    <label class="fld"><span>${t('bg.blur')} <b id="bgBlurVal">${Number(b.blur).toFixed(1)}</b></span>
       <input type="range" min="0" max="20" step="0.5" data-bg="blur" value="${b.blur}"></label>
-    <label class="fld"><span>Degradado inferior <b id="bgShadeVal">${pct(b.shade)}%</b></span>
+    <label class="fld"><span>${t('bg.shade')} <b id="bgShadeVal">${pct(b.shade)}%</b></span>
       <input type="range" min="0" max="100" data-bg="shade" data-scale="100" value="${pct(b.shade)}"></label>
-    <label class="fld"><span>Rotar cada (segundos)</span>
+    <label class="fld"><span>${t('bg.rotate')}</span>
       <input type="number" min="0" max="86400" data-bg="rotate_seconds" value="${b.rotate_seconds}"></label>
-    <label class="fld"><span>Color base</span>
+    <label class="fld"><span>${t('bg.baseColor')}</span>
       <input type="color" data-bg="base_color" value="${hex6(b.base_color)}"></label>`;
 }
 
@@ -419,7 +437,7 @@ async function loadServices(force) {
     renderServices();
   } catch (err) {
     $('#svcNote').classList.remove('hidden');
-    $('#svcNote').textContent = 'No se pudo leer systemd/docker: ' + err.message;
+    $('#svcNote').textContent = t('services.loadError', { error: err.message });
   }
 }
 
@@ -430,14 +448,28 @@ function servicesWidget() {
 function renderSvcCards() {
   const stats = S.demo ? DEMO_STATS : (S.state && S.state.stats);
   if (!stats || !stats.cpu) return;
+  const gpu = stats.gpu || {};
+  const gpuValue = gpu.percent != null ? Math.round(gpu.percent) + '%' : '—';
+  const gpuParts = [];
+  if (gpu.name) gpuParts.push(gpu.name);
+  if (gpu.temp != null) gpuParts.push(gpu.temp.toFixed(0) + ' °C');
+  if (gpu.memory_used_str && gpu.memory_total_str) {
+    gpuParts.push(gpu.memory_used_str + ' / ' + gpu.memory_total_str);
+  }
+  if (!gpuParts.length) gpuParts.push(t('services.gpuNone'));
   const cards = [
-    ['CPU', Number(stats.cpu.percent).toFixed(0) + '%', (stats.cpu.count || '?') + ' hilos'],
-    ['RAM', Number(stats.ram.percent).toFixed(0) + '%', stats.ram.used_str + ' / ' + stats.ram.total_str],
-    ['Disco', Number(stats.disk.percent).toFixed(0) + '%', stats.disk.used_str + ' / ' + stats.disk.total_str],
-    ['Red ↓', stats.net.down_str, 'Red ↑ ' + stats.net.up_str],
-    ['Uptime', stats.uptime_str, stats.hostname],
-    ['Load', Number(stats.cpu.load).toFixed(2), (stats.cpu.count || '?') + ' núcleos'],
+    [t('services.cpu'), Number(stats.cpu.percent).toFixed(0) + '%', t('services.threads', { count: stats.cpu.count || '?' })],
+    [t('services.ram'), Number(stats.ram.percent).toFixed(0) + '%', stats.ram.used_str + ' / ' + stats.ram.total_str],
+    [t('services.disk'), Number(stats.disk.percent).toFixed(0) + '%', stats.disk.used_str + ' / ' + stats.disk.total_str],
+    [t('services.netDown'), stats.net.down_str, t('services.netUp') + ' ' + stats.net.up_str],
   ];
+  if (gpu.available) {
+    cards.push([t('services.gpu'), gpuValue, gpuParts.join(' · ')]);
+  }
+  cards.push(
+    [t('services.uptime'), stats.uptime_str, stats.hostname],
+    [t('services.load'), Number(stats.cpu.load).toFixed(2), t('services.cores', { count: stats.cpu.count || '?' })],
+  );
   $('#svcCards').innerHTML = cards.map(([k, v, s]) =>
     `<div class="stat"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div><div class="s">${esc(s)}</div></div>`).join('');
 }
@@ -449,14 +481,18 @@ function renderServices() {
   const note = $('#svcNote');
 
   const messages = [];
-  if (data.systemd_error && !units.length) messages.push('systemd: ' + data.systemd_error);
-  if (data.docker_error && !docker.length) messages.push('docker: ' + data.docker_error);
+  if (data.systemd_error && !units.length) {
+    messages.push(t('services.note.systemd', { error: data.systemd_error }));
+  }
+  if (data.docker_error && !docker.length) {
+    messages.push(t('services.note.docker', { error: data.docker_error }));
+  }
   if (data.actions_allowed === false) {
-    messages.push('Acciones deshabilitadas: instala los permisos con “webapp/install.sh --actions”.');
+    messages.push(t('services.note.actions'));
   }
   const widget = servicesWidget();
   if (!widget) {
-    messages.push('El diseño actual no incluye la lista de servicios en el panel (elige “Proxmox”).');
+    messages.push(t('services.note.noDesign'));
   }
   if (messages.length) { note.classList.remove('hidden'); note.textContent = messages.join(' · '); }
   else note.classList.add('hidden');
@@ -471,42 +507,42 @@ function renderServices() {
     return u.unit.toLowerCase().includes(filter) || (u.description || '').toLowerCase().includes(filter);
   });
 
-  $('#svcCount').textContent = filtered.length + ' de ' + units.length + ' unidades';
+  $('#svcCount').textContent = t('services.count', { filtered: filtered.length, total: units.length });
   $('#svcBody').innerHTML = filtered.map((u) => {
     const allowed = data.actions_allowed;
     const actions = [];
     if (u.active === 'active') {
-      actions.push(actionBtn('restart', u.unit, 'Reiniciar', allowed, 'ghost'));
-      actions.push(actionBtn('stop', u.unit, 'Detener', allowed, 'danger'));
+      actions.push(actionBtn('restart', u.unit, t('services.restart'), allowed, 'ghost'));
+      actions.push(actionBtn('stop', u.unit, t('services.stop'), allowed, 'danger'));
     } else {
-      actions.push(actionBtn('start', u.unit, 'Arrancar', allowed, 'primary'));
+      actions.push(actionBtn('start', u.unit, t('services.start'), allowed, 'primary'));
     }
     return `<tr>
       <td><input class="pick" type="checkbox" data-pick-unit="${esc(u.unit)}"
         ${picked.has(u.unit) ? 'checked' : ''} ${canPick ? '' : 'disabled'}></td>
       <td><code>${esc(u.unit)}</code><div class="desc">${esc(u.description || '')}</div></td>
-      <td><span class="pill ${esc(u.active)}">${esc(u.active)}</span></td>
+      <td><span class="pill ${esc(u.active)}">${esc(t('state.' + u.active, {}, u.active))}</span></td>
       <td class="num">${u.cpu != null ? u.cpu + '%' : '—'}</td>
       <td class="num">${fmtBytes(u.memory)}</td>
       <td class="num">${esc(shortSince(u.since))}</td>
       <td class="act">${actions.join('')}</td>
     </tr>`;
-  }).join('') || `<tr><td colspan="7" class="muted">Sin resultados.</td></tr>`;
+  }).join('') || `<tr><td colspan="7" class="muted">${t('services.noResults')}</td></tr>`;
 
-  $('#dockerCount').textContent = docker.length + ' contenedor(es)';
+  $('#dockerCount').textContent = t('services.dockerCount', { count: docker.length });
   $('#dockerBody').innerHTML = docker.map((c) => {
     const allowed = data.actions_allowed;
     const actions = c.state === 'running'
-      ? actionBtn('restart', c.name, 'Reiniciar', allowed, 'ghost', 'docker') +
-        actionBtn('stop', c.name, 'Detener', allowed, 'danger', 'docker')
-      : actionBtn('start', c.name, 'Arrancar', allowed, 'primary', 'docker');
+      ? actionBtn('restart', c.name, t('services.restart'), allowed, 'ghost', 'docker') +
+        actionBtn('stop', c.name, t('services.stop'), allowed, 'danger', 'docker')
+      : actionBtn('start', c.name, t('services.start'), allowed, 'primary', 'docker');
     return `<tr>
       <td><code>${esc(c.name)}</code></td>
       <td class="muted">${esc(c.image)}</td>
       <td><span class="pill ${c.state === 'running' ? 'active' : 'inactive'}">${esc(c.status || c.state)}</span></td>
       <td class="act">${actions}</td>
     </tr>`;
-  }).join('') || `<tr><td colspan="4" class="muted">Docker no disponible o sin contenedores.</td></tr>`;
+  }).join('') || `<tr><td colspan="4" class="muted">${t('services.noDocker')}</td></tr>`;
 }
 
 function shortSince(value) {
@@ -516,7 +552,7 @@ function shortSince(value) {
 
 function actionBtn(action, name, label, allowed, style, scope = 'systemd') {
   return `<button class="btn icon ${style}" data-svc-action="${action}" data-svc-name="${esc(name)}"
-    data-svc-scope="${scope}" ${allowed ? '' : 'disabled title="Sin permisos"'}>${label}</button>`;
+    data-svc-scope="${scope}" ${allowed ? '' : 'disabled title="' + esc(t('services.noPermission')) + '"'}>${label}</button>`;
 }
 
 $('#svcBody').addEventListener('change', (event) => {
@@ -525,7 +561,7 @@ $('#svcBody').addEventListener('change', (event) => {
   const widget = servicesWidget();
   if (!widget) {
     event.target.checked = false;
-    toast('El diseño actual no incluye lista de servicios. Elige el diseño Proxmox.', true);
+    toast(t('services.note.noPick'), true);
     return;
   }
   const set = new Set(widget.units || []);
@@ -535,11 +571,11 @@ $('#svcBody').addEventListener('change', (event) => {
 });
 
 async function doServiceAction(scope, name, action) {
-  const verb = { start: 'arrancar', stop: 'detener', restart: 'reiniciar' }[action] || action;
-  if (!confirm(`¿${verb} ${name}?`)) return;
+  const verb = t('services.verb.' + action);
+  if (!confirm(t('services.confirm', { verb, name }))) return;
   try {
     const res = await postJSON('/api/services/action', { scope, name, action });
-    toast(res.message || 'Hecho', !res.ok);
+    toast(res.ok ? t('toast.done') : (res.message || 'Error'), !res.ok);
     loadServices(true);
   } catch (err) { toast(err.message, true); }
 }
@@ -566,17 +602,27 @@ async function loadHealth() {
     const health = await getJSON('/api/health');
     S.health = health;
     const device = health.device || {};
+    const gpu = health.gpu || {};
+    const sensors = health.sensors || {};
+    const cpuSensor = sensors.cpu_temp != null
+      ? (sensors.cpu_source || 'CPU') + ' ' + Number(sensors.cpu_temp).toFixed(0) + ' °C'
+      : t('health.none');
+    const gpuSensor = sensors.gpu_temp != null
+      ? (sensors.gpu_source || 'GPU') + ' ' + Number(sensors.gpu_temp).toFixed(0) + ' °C'
+      : t('health.none');
     const rows = [
-      ['Versión', health.version],
-      ['Host', health.host || '—'],
-      ['Datos', health.data_dir],
-      ['Panel', device.connected ? (device.port || 'conectado') : (device.last_error || 'desconectado')],
-      ['Frames enviados', device.frames != null ? device.frames : '—'],
-      ['Último envío', device.last_push ? new Date(device.last_push * 1000).toLocaleString() : '—'],
-      ['systemd', health.systemd ? 'disponible' : 'no disponible'],
-      ['Docker', health.docker ? 'disponible' : 'no instalado'],
-      ['Acciones', health.actions_allowed ? 'permitidas' : 'solo lectura'],
-      ['Imágenes', health.backgrounds],
+      [t('health.version'), health.version],
+      [t('health.host'), health.host || '—'],
+      [t('health.data'), health.data_dir],
+      [t('health.panel'), device.connected ? (device.port || t('health.connected')) : (device.last_error || t('health.disconnected'))],
+      [t('health.frames'), device.frames != null ? device.frames : '—'],
+      [t('health.lastPush'), device.last_push ? new Date(device.last_push * 1000).toLocaleString(locale()) : '—'],
+      [t('health.systemd'), health.systemd ? t('health.available') : t('health.unavailable')],
+      [t('health.docker'), health.docker ? t('health.available') : t('health.notInstalled')],
+      [t('health.gpu'), gpu.name || t('health.none')],
+      [t('health.sensors'), t('health.cpu') + ': ' + cpuSensor + ' · ' + t('health.gpu') + ': ' + gpuSensor],
+      [t('health.actions'), health.actions_allowed ? t('health.allowed') : t('health.readOnly')],
+      [t('health.images'), health.backgrounds],
     ];
     $('#healthBox').innerHTML = rows.map(([k, v]) =>
       `<div class="k">${esc(k)}</div><div><code>${esc(v)}</code></div>`).join('');
@@ -598,8 +644,8 @@ $('#importFile').addEventListener('change', async (event) => {
     const parsed = JSON.parse(await file.text());
     S.config = await putJSON('/api/config', parsed);
     renderAll();
-    toast('Configuración importada');
-  } catch (err) { toast('Config inválida: ' + err.message, true); }
+    toast(t('toast.configImported'));
+  } catch (err) { toast(t('toast.configInvalid', { error: err.message }), true); }
   event.target.value = '';
 });
 
@@ -608,7 +654,7 @@ $('#logsBtn').addEventListener('click', async () => {
     const data = await getJSON('/api/logs?lines=150');
     const box = $('#logsBox');
     box.classList.remove('hidden');
-    box.textContent = (data.lines || []).join('\n') || '(vacío)';
+    box.textContent = (data.lines || []).join('\n') || t('settings.empty');
   } catch (err) { toast(err.message, true); }
 });
 

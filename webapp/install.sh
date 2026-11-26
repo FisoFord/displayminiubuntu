@@ -104,6 +104,7 @@ done
 install -m 644 "$DRIVER" "$INSTALL_DIR/minidisplay.py"
 install -m 644 "$SRC_DIR/templates/index.html" "$INSTALL_DIR/templates/index.html"
 install -m 644 "$SRC_DIR/static/app.js" "$INSTALL_DIR/static/app.js"
+install -m 644 "$SRC_DIR/static/i18n.js" "$INSTALL_DIR/static/i18n.js"
 install -m 644 "$SRC_DIR/static/style.css" "$INSTALL_DIR/static/style.css"
 
 if [ -d "$SRC_DIR/defaults" ]; then

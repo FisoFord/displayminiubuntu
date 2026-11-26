@@ -159,8 +159,10 @@ def metric_data(stats: dict, metric: str) -> dict:
     if metric == "temp":
         temp = stats.get("cpu", {}).get("temp")
         value = float(temp or 0)
-        return {"value": value, "max": 100.0, "text": f"{value:.0f}" if temp else "--",
-                "unit": "°C", "label": label, "sub": "sensor CPU" if temp else "sin sensor"}
+        return {"value": value, "max": 100.0,
+                "text": f"{temp:.0f}" if temp is not None else "--",
+                "unit": "°C", "label": label,
+                "sub": "sensor CPU" if temp is not None else "sin sensor"}
     if metric == "load":
         value = float(stats.get("cpu", {}).get("load") or 0)
         top = max(float(stats.get("cpu", {}).get("count") or 1) * 1.5, value * 1.2, 1.0)
@@ -196,6 +198,30 @@ def metric_data(stats: dict, metric: str) -> dict:
         seconds = float(stats.get("uptime") or 0)
         return {"value": seconds, "max": 86400, "text": human_uptime(seconds), "unit": "",
                 "label": label, "sub": "encendido"}
+    if metric == "gpu":
+        gpu = stats.get("gpu") or {}
+        available = gpu.get("percent") is not None
+        value = float(gpu.get("percent") or 0)
+        return {"value": value, "max": 100.0,
+                "text": f"{value:.0f}" if available else "--",
+                "unit": "%" if available else "",
+                "label": label, "sub": gpu.get("name") or "sin GPU"}
+    if metric == "gpu_temp":
+        gpu = stats.get("gpu") or {}
+        temp = gpu.get("temp")
+        return {"value": float(temp or 0), "max": 100.0,
+                "text": f"{temp:.0f}" if temp is not None else "--",
+                "unit": "°C", "label": label, "sub": gpu.get("name") or "sin GPU"}
+    if metric == "gpu_mem":
+        gpu = stats.get("gpu") or {}
+        percent = gpu.get("memory_percent")
+        return {"value": float(percent or 0), "max": 100.0,
+                "text": f"{percent:.0f}" if percent is not None else "--",
+                "unit": "%" if percent is not None else "",
+                "label": label,
+                "sub": (gpu.get("memory_used_str") + " / " + gpu.get("memory_total_str")
+                        if gpu.get("memory_used_str") and gpu.get("memory_total_str")
+                        else "sin GPU")}
     return metric_data(stats, "cpu")
 
 
@@ -471,10 +497,21 @@ def _draw_clock(img, draw, widget, stats, rects):
     sf_size = getattr(sf, "size", max(8, int(fs * 0.42)))
 
     max_right = int(w * 0.58)
-    date_text = _ellipsize(draw, f"{stats.get('weekday', '')} {stats.get('date', '')}".strip(),
-                           sf, max_right)
-    host_text = _ellipsize(draw, stats.get("hostname", ""), sf, max_right)
-    right_w = max(draw.textlength(date_text, font=sf), draw.textlength(host_text, font=sf))
+    lines = [f"{stats.get('weekday', '')} {stats.get('date', '')}".strip(),
+             stats.get("hostname", "")]
+    gpu = stats.get("gpu") or {}
+    if gpu.get("available"):
+        if gpu.get("percent") is not None and gpu.get("temp") is not None:
+            gpu_text = f"GPU {gpu['percent']:.0f}% · {gpu['temp']:.0f}°C"
+        elif gpu.get("percent") is not None:
+            gpu_text = f"GPU {gpu['percent']:.0f}%"
+        elif gpu.get("temp") is not None:
+            gpu_text = f"GPU {gpu['temp']:.0f}°C"
+        else:
+            gpu_text = "GPU n/d"
+        lines.append(gpu_text)
+    lines = [_ellipsize(draw, line, sf, max_right) for line in lines]
+    right_w = max(draw.textlength(line, font=sf) for line in lines)
 
     time_text = stats.get("time", "--:--")
     vf = _fit_font(draw, time_text, fs, int(w - right_w - pad * 2 - 10), True)
@@ -482,11 +519,10 @@ def _draw_clock(img, draw, widget, stats, rects):
           rgba(widget.get("value_color", "#ffffff")), anchor="lm")
 
     line_h = int(sf_size * 1.35)
-    block_top = y + (h - line_h * 2) // 2
-    _text(draw, (x + w - pad, block_top), date_text, sf,
-          rgba(widget.get("label_color", "#c7d7ea")), anchor="ra")
-    _text(draw, (x + w - pad, block_top + line_h), host_text, sf,
-          rgba(widget.get("label_color", "#c7d7ea")), anchor="ra")
+    block_top = y + (h - line_h * len(lines)) // 2
+    for index, line in enumerate(lines):
+        _text(draw, (x + w - pad, block_top + index * line_h), line, sf,
+              rgba(widget.get("label_color", "#c7d7ea")), anchor="ra")
     rects[widget["id"]] = [x, y, w, h]
 
 
@@ -608,6 +644,17 @@ def format_template(text: str, stats: dict) -> str:
     ram = stats.get("ram", {})
     net = stats.get("net", {})
     svc = stats.get("services", {})
+    gpu = stats.get("gpu") or {}
+    if gpu.get("percent") is not None and gpu.get("temp") is not None:
+        gpu_text = f"{gpu['percent']:.0f}% · {gpu['temp']:.0f}°C"
+    elif gpu.get("percent") is not None:
+        gpu_text = f"{gpu['percent']:.0f}%"
+    elif gpu.get("temp") is not None:
+        gpu_text = f"{gpu['temp']:.0f}°C"
+    elif gpu.get("available"):
+        gpu_text = "n/d"
+    else:
+        gpu_text = "—"
     mapping = {
         "hostname": stats.get("hostname", ""),
         "os": stats.get("os", ""),
@@ -631,6 +678,8 @@ def format_template(text: str, stats: dict) -> str:
         "services_running": str(svc.get("running", 0)),
         "services_failed": str(svc.get("failed", 0)),
         "docker": str(svc.get("docker_running", 0)),
+        "gpu": gpu_text,
+        "gpu_line": ("GPU   " + gpu_text + "\n") if gpu.get("available") else "",
     }
     try:
         return text.format_map(_SafeDict(mapping))
@@ -664,8 +713,11 @@ def render_frame(cfg: dict, stats: dict, backgrounds_dir: Path):
     draw = ImageDraw.Draw(img)
 
     rects = {}
+    gpu_available = bool((stats.get("gpu") or {}).get("available"))
     for widget in cfg.get("widgets", []):
         wtype = widget.get("type")
+        if widget.get("metric") in ("gpu", "gpu_temp", "gpu_mem") and not gpu_available:
+            continue
         try:
             if wtype == "ring":
                 _draw_ring(img, draw, widget, metric_data(stats, widget.get("metric", "cpu")), rects)

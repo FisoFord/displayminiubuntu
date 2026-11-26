@@ -9,17 +9,18 @@
 <body>
 
 <header class="topbar">
-  <div class="brand"><span class="logo">▮</span> MiniDisplay <small>panel</small></div>
+  <div class="brand"><span class="logo">▮</span> MiniDisplay <small data-i18n="brand.sub">panel</small></div>
   <nav class="tabs">
-    <button class="tab-btn active" data-tab="design">Diseño</button>
-    <button class="tab-btn" data-tab="services">Servicios</button>
-    <button class="tab-btn" data-tab="settings">Ajustes</button>
+    <button class="tab-btn active" data-tab="design" data-i18n="tab.design">Diseño</button>
+    <button class="tab-btn" data-tab="services" data-i18n="tab.services">Servicios</button>
+    <button class="tab-btn" data-tab="settings" data-i18n="tab.settings">Ajustes</button>
   </nav>
   <div class="statusline">
     <span id="deviceDot" class="dot"></span>
-    <span id="deviceText">conectando…</span>
+    <span id="deviceText" data-i18n="status.connecting">conectando…</span>
     <span class="sep"></span>
     <span id="pushText" class="muted"></span>
+    <select id="langSelect" class="lang-select"></select>
   </div>
 </header>
 
@@ -28,15 +29,16 @@
   <section id="tab-design" class="tab-panel">
     <div class="preview-col">
       <div class="device">
-        <img id="preview" alt="Vista previa del panel" draggable="false" src="/api/preview.png">
+        <img id="preview" alt="Vista previa del panel" data-i18n-alt="preview.alt"
+             draggable="false" src="/api/preview.png">
       </div>
       <div class="preview-foot">
-        <span id="previewInfo" class="muted">320 × 480</span>
-        <button id="pushBtn" class="btn small">Enviar ahora</button>
+        <span id="previewInfo" class="muted" data-i18n="preview.size">320 × 480</span>
+        <button id="pushBtn" class="btn small" data-i18n="preview.push">Enviar ahora</button>
       </div>
 
       <div class="card">
-        <div class="card-head"><h2>Pantalla</h2></div>
+        <div class="card-head"><h2 data-i18n="display.title">Pantalla</h2></div>
         <div id="displaySettings" class="form grid2"></div>
       </div>
     </div>
@@ -44,23 +46,23 @@
     <div class="editor-col">
       <div class="card">
         <div class="card-head">
-          <h2>Diseño del panel</h2>
-          <span class="muted">4 estilos</span>
+          <h2 data-i18n="design.title">Diseño del panel</h2>
+          <span class="muted" data-i18n="design.count">4 estilos</span>
         </div>
         <div id="designGrid" class="designs"></div>
-        <p class="hint" id="designHint">Elige uno de los cuatro diseños. El fondo, el brillo y las imágenes se ajustan debajo.</p>
+        <p class="hint" id="designHint" data-i18n="design.hint">Elige uno de los cuatro diseños. El fondo, el brillo y las imágenes se ajustan debajo.</p>
       </div>
 
       <div class="card">
         <div class="card-head">
-          <h2>Fondo / marca de agua</h2>
+          <h2 data-i18n="bg.title">Fondo / marca de agua</h2>
           <span id="bgCount" class="muted"></span>
         </div>
         <div id="bgGallery" class="gallery"></div>
         <label class="upload" id="dropZone">
           <input type="file" id="bgUpload" accept="image/*" multiple hidden>
-          <span>Arrastra imágenes aquí o <b>haz clic</b></span>
-          <small>JPG, PNG, WEBP · máx 30 MB · rotación automática opcional</small>
+          <span data-i18n-html="bg.uploadMain">Arrastra imágenes aquí o <b>haz clic</b></span>
+          <small data-i18n="bg.uploadHint">JPG, PNG, WEBP · máx 30 MB · rotación automática opcional</small>
         </label>
         <div id="bgControls" class="form grid2"></div>
       </div>
@@ -70,16 +72,17 @@
   <!-- ========================================================= SERVICIOS -->
   <section id="tab-services" class="tab-panel hidden">
     <div class="svc-head">
-      <h2>Servicios del sistema</h2>
+      <h2 data-i18n="services.title">Servicios del sistema</h2>
       <div class="row">
-        <input id="svcSearch" class="input" placeholder="Filtrar unidad o descripción…">
+        <input id="svcSearch" class="input" data-i18n-placeholder="services.filter"
+               placeholder="Filtrar unidad o descripción…">
         <select id="svcState" class="input">
-          <option value="all">Todos</option>
-          <option value="active">Activos</option>
-          <option value="failed">Con fallo</option>
-          <option value="inactive">Inactivos</option>
+          <option value="all" data-i18n="services.all">Todos</option>
+          <option value="active" data-i18n="services.active">Activos</option>
+          <option value="failed" data-i18n="services.failed">Con fallo</option>
+          <option value="inactive" data-i18n="services.inactive">Inactivos</option>
         </select>
-        <button id="svcRefresh" class="btn small">Refrescar</button>
+        <button id="svcRefresh" class="btn small" data-i18n="services.refresh">Refrescar</button>
       </div>
     </div>
 
@@ -95,13 +98,13 @@
         <table id="svcTable">
           <thead>
             <tr>
-              <th title="Mostrar en el panel">Panel</th>
-              <th>Unidad</th>
-              <th>Estado</th>
-              <th class="num">CPU</th>
-              <th class="num">RAM</th>
-              <th class="num">Activo desde</th>
-              <th class="num">Acciones</th>
+              <th data-i18n="services.panel" data-i18n-title="services.panelHint">Panel</th>
+              <th data-i18n="services.unit">Unidad</th>
+              <th data-i18n="services.state">Estado</th>
+              <th class="num" data-i18n="services.cpu">CPU</th>
+              <th class="num" data-i18n="services.ram">RAM</th>
+              <th class="num" data-i18n="services.since">Activo desde</th>
+              <th class="num" data-i18n="services.actions">Acciones</th>
             </tr>
           </thead>
           <tbody id="svcBody"></tbody>
@@ -111,17 +114,17 @@
 
     <div class="card">
       <div class="card-head">
-        <h2>Docker</h2>
+        <h2 data-i18n="services.docker">Docker</h2>
         <span id="dockerCount" class="muted"></span>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Contenedor</th>
-              <th>Imagen</th>
-              <th>Estado</th>
-              <th class="num">Acciones</th>
+              <th data-i18n="services.container">Contenedor</th>
+              <th data-i18n="services.image">Imagen</th>
+              <th data-i18n="services.status">Estado</th>
+              <th class="num" data-i18n="services.actions">Acciones</th>
             </tr>
           </thead>
           <tbody id="dockerBody"></tbody>
@@ -133,31 +136,31 @@
   <!-- =========================================================== AJUSTES -->
   <section id="tab-settings" class="tab-panel hidden">
     <div class="card">
-      <div class="card-head"><h2>Diagnóstico</h2></div>
+      <div class="card-head"><h2 data-i18n="settings.diagnostics">Diagnóstico</h2></div>
       <div id="healthBox" class="kv"></div>
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Configuración</h2></div>
+      <div class="card-head"><h2 data-i18n="settings.config">Configuración</h2></div>
       <div class="row">
-        <button id="exportBtn" class="btn small">Exportar config.json</button>
+        <button id="exportBtn" class="btn small" data-i18n="settings.export">Exportar config.json</button>
         <label class="btn small" style="cursor:pointer">
-          Importar…
+          <span data-i18n="settings.import">Importar…</span>
           <input type="file" id="importFile" accept="application/json" hidden>
         </label>
       </div>
-      <p class="hint">La configuración se guarda en el servidor y se aplica al instante.</p>
+      <p class="hint" data-i18n="settings.configHint">La configuración se guarda en el servidor y se aplica al instante.</p>
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Logs</h2></div>
-      <button id="logsBtn" class="btn small">Ver últimas 150 líneas</button>
+      <div class="card-head"><h2 data-i18n="settings.logs">Logs</h2></div>
+      <button id="logsBtn" class="btn small" data-i18n="settings.logsButton">Ver últimas 150 líneas</button>
       <pre id="logsBox" class="logs hidden"></pre>
     </div>
 
     <div class="card">
-      <div class="card-head"><h2>Seguridad</h2></div>
-      <p class="hint">
+      <div class="card-head"><h2 data-i18n="settings.security">Seguridad</h2></div>
+      <p class="hint" data-i18n-html="settings.securityText">
         Por defecto el panel no pide contraseña, pensado para una red local de confianza.
         Para activar autenticación básica, define <code>WEBAPP_USER</code> y
         <code>WEBAPP_PASSWORD</code> en <code>/etc/default/minidisplay-web</code> y reinicia el
@@ -169,6 +172,7 @@
 </main>
 
 <div id="toasts" class="toasts"></div>
+<script src="/static/i18n.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

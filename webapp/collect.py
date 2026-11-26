@@ -4,12 +4,16 @@
 from __future__ import annotations
 
 import collections
+import glob
 import os
 import platform
+import shutil
 import socket
+import subprocess
 import threading
 import time
 from datetime import datetime
+from pathlib import Path
 
 try:
     import psutil
@@ -17,6 +21,14 @@ except ImportError:  # pragma: no cover
     psutil = None
 
 HISTORY_LEN = 120
+
+
+def _float_or_none(value):
+    try:
+        number = float(str(value).strip())
+        return number if number == number else None
+    except (TypeError, ValueError):
+        return None
 
 
 def human_bytes(value: float) -> str:
@@ -57,6 +69,139 @@ def _os_pretty_name() -> str:
     return f"{platform.system()} {platform.release()}"
 
 
+def _read_int(path) -> int | None:
+    try:
+        return int(Path(path).read_text().strip())
+    except (OSError, ValueError):
+        return None
+
+
+class GpuReader:
+    """Lee uso, VRAM y temperatura de la GPU con las fuentes disponibles."""
+
+    def __init__(self):
+        self._ts = 0.0
+        self._cache = None
+        self._win_checked = False
+        self._win_payload = None
+
+    @staticmethod
+    def _payload(name, percent=None, used=None, total=None, temp=None, source=None):
+        memory_percent = (used / total * 100) if used and total else None
+        return {
+            "available": bool(name),
+            "name": name,
+            "percent": percent,
+            "memory_percent": memory_percent,
+            "memory_used": used,
+            "memory_total": total,
+            "memory_used_str": human_bytes(used) if used else None,
+            "memory_total_str": human_bytes(total) if total else None,
+            "temp": temp,
+            "source": source,
+        }
+
+    def read(self):
+        now = time.monotonic()
+        if self._cache is not None and now - self._ts < 2.0:
+            return self._cache
+        data = (self._nvidia() or self._amd_sysfs()
+                or self._intel_sysfs() or self._windows_name())
+        if data is None:
+            data = self._payload(None)
+        self._cache = data
+        self._ts = now
+        return data
+
+    def _nvidia(self):
+        exe = shutil.which("nvidia-smi")
+        if not exe:
+            return None
+        try:
+            proc = subprocess.run(
+                [exe, "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, timeout=5)
+        except Exception:
+            return None
+        lines = (proc.stdout or "").strip().splitlines()
+        if proc.returncode != 0 or not lines:
+            return None
+        parts = [part.strip() for part in lines[0].split(",")]
+        if len(parts) < 5:
+            return None
+        used = _float_or_none(parts[2])
+        total = _float_or_none(parts[3])
+        return self._payload(
+            parts[0] or "NVIDIA GPU",
+            _float_or_none(parts[1]),
+            int(used * 1024 * 1024) if used else None,
+            int(total * 1024 * 1024) if total else None,
+            _float_or_none(parts[4]),
+            "nvidia-smi",
+        )
+
+    def _amd_sysfs(self):
+        if os.name == "nt":
+            return None
+        for busy in glob.glob("/sys/class/drm/card[0-9]*/device/gpu_busy_percent"):
+            device = Path(busy).parent
+            try:
+                percent = float(Path(busy).read_text().strip())
+            except (OSError, ValueError):
+                percent = None
+            used = _read_int(device / "mem_info_vram_used")
+            total = _read_int(device / "mem_info_vram_total")
+            temp = None
+            for hw in (device / "hwmon").glob("hwmon*"):
+                for name in ("temp1_input", "temp2_input"):
+                    raw = _read_int(hw / name)
+                    if raw and 0 < raw < 150000:
+                        temp = raw / 1000.0
+                        break
+                if temp:
+                    break
+            return self._payload("AMD GPU", percent, used, total, temp, "sysfs")
+        return None
+
+    def _intel_sysfs(self):
+        if os.name == "nt":
+            return None
+        for uevent in glob.glob("/sys/class/drm/card[0-9]*/device/uevent"):
+            try:
+                text = Path(uevent).read_text(errors="ignore")
+            except OSError:
+                continue
+            if "i915" not in text and "xe" not in text:
+                continue
+            temp = None
+            for hw in (Path(uevent).parent / "hwmon").glob("hwmon*"):
+                raw = _read_int(hw / "temp1_input")
+                if raw and 0 < raw < 150000:
+                    temp = raw / 1000.0
+                    break
+            return self._payload("Intel GPU", None, None, None, temp, "sysfs")
+        return None
+
+    def _windows_name(self):
+        if os.name != "nt":
+            return None
+        if self._win_checked:
+            return self._win_payload
+        self._win_checked = True
+        try:
+            proc = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 "(Get-CimInstance Win32_VideoController | Select-Object -First 1 -ExpandProperty Name)"],
+                capture_output=True, text=True, timeout=8)
+            name = (proc.stdout or "").strip().splitlines()
+            if name and name[0].strip():
+                self._win_payload = self._payload(name[0].strip(), source="wmi")
+        except Exception:
+            pass
+        return self._win_payload
+
+
 class Collector(threading.Thread):
     """Muestrea el sistema cada segundo y guarda historial para las graficas."""
 
@@ -67,9 +212,11 @@ class Collector(threading.Thread):
         self._lock = threading.Lock()
         self._snapshot = {}
         self._history = {k: collections.deque(maxlen=HISTORY_LEN)
-                         for k in ("cpu", "ram", "net_down", "net_up", "temp", "load")}
+                         for k in ("cpu", "ram", "net_down", "net_up", "temp", "load",
+                                   "gpu", "gpu_temp")}
         self._last_net = None
         self._last_net_ts = None
+        self._gpu = GpuReader()
         self.hostname = socket.gethostname()
         self.os_name = _os_pretty_name()
         self.kernel = platform.release()
@@ -88,21 +235,23 @@ class Collector(threading.Thread):
     # -- sensores -----------------------------------------------------------
     def _cpu_temp(self):
         if psutil is None or not hasattr(psutil, "sensors_temperatures"):
-            return None
+            return None, None
         try:
             sensors = psutil.sensors_temperatures() or {}
         except Exception:
-            return None
+            return None, None
         candidates = ("coretemp", "k10temp", "cpu_thermal", "zenpower", "acpitz")
         for name in candidates:
             for entry in sensors.get(name, []):
                 if entry.current and 0 < entry.current < 125:
-                    return float(entry.current)
-        for entries in sensors.values():
+                    return float(entry.current), name
+        for name, entries in sensors.items():
+            if any(token in name.lower() for token in ("gpu", "amdgpu", "nouveau", "nvidia", "radeon")):
+                continue
             for entry in entries:
                 if entry.current and 0 < entry.current < 125:
-                    return float(entry.current)
-        return None
+                    return float(entry.current), name
+        return None, None
 
     def _net_rates(self):
         if psutil is None:
@@ -178,7 +327,8 @@ class Collector(threading.Thread):
 
         disk_percent, disk_used, disk_total = self._disk_usage()
         net_down, net_up = self._net_rates()
-        temp = self._cpu_temp()
+        temp, temp_source = self._cpu_temp()
+        gpu = self._gpu.read()
         services = self._services_summary()
 
         snapshot = {
@@ -221,6 +371,13 @@ class Collector(threading.Thread):
                 "up_str": human_rate(net_up),
             },
             "processes": processes,
+            "gpu": gpu,
+            "sensors": {
+                "cpu_source": temp_source,
+                "cpu_temp": temp,
+                "gpu_source": gpu.get("source"),
+                "gpu_temp": gpu.get("temp"),
+            },
             "services": services,
         }
 
@@ -231,6 +388,8 @@ class Collector(threading.Thread):
             self._history["net_up"].append(net_up)
             self._history["temp"].append(temp or 0.0)
             self._history["load"].append(load[0])
+            self._history["gpu"].append(gpu.get("percent") or 0.0)
+            self._history["gpu_temp"].append(gpu.get("temp") or 0.0)
             snapshot["history"] = {k: list(v) for k, v in self._history.items()}
             self._snapshot = snapshot
         return snapshot

@@ -451,6 +451,7 @@ def api_service_action():
 
 @app.get("/api/health")
 def api_health():
+    snapshot = collector.snapshot() if collector is not None else {}
     return jsonify({
         "ok": True,
         "version": VERSION,
@@ -459,6 +460,8 @@ def api_health():
         "actions_allowed": services.actions_allowed(),
         "systemd": services.has_systemd(),
         "docker": services.has_docker(),
+        "gpu": snapshot.get("gpu"),
+        "sensors": snapshot.get("sensors"),
         "backgrounds": len(load_meta()),
         "data_dir": str(DATA_DIR),
     })

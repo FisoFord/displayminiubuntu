@@ -92,6 +92,16 @@ a { color: var(--accent); }
   white-space: nowrap;
   overflow: hidden;
 }
+.lang-select {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 6px;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 6px;
+}
 .dot {
   width: 9px; height: 9px; border-radius: 50%;
   background: #64748b;

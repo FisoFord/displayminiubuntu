@@ -24,6 +24,9 @@ METRIC_INFO = {
     "docker":   {"label": "CONTENEDORES", "unit": "", "kind": "count"},
     "failed":   {"label": "FALLOS", "unit": "", "kind": "count"},
     "uptime":   {"label": "UPTIME", "unit": "", "kind": "uptime"},
+    "gpu":      {"label": "GPU", "unit": "%", "kind": "percent"},
+    "gpu_temp": {"label": "TEMP GPU", "unit": "°C", "kind": "temp"},
+    "gpu_mem":  {"label": "VRAM", "unit": "%", "kind": "percent"},
 }
 
 DEFAULT_CONFIG = {
@@ -97,18 +100,20 @@ def _preset_proxmox():
 def _preset_minimal():
     return [
         _base_widget("clock", "clock", x=16, y=6, w=288, h=58, font_size=34),
-        _base_widget("metric", "cpu", metric="cpu", x=16, y=68, w=288, h=104,
+        _base_widget("metric", "cpu", metric="cpu", x=16, y=68, w=288, h=100,
                      font_size=60, label="USO DE CPU", color="#22d3ee"),
-        _base_widget("bar", "ram", metric="ram", x=16, y=178, w=288, h=42,
+        _base_widget("bar", "ram", metric="ram", x=16, y=174, w=288, h=36,
                      color="#a78bfa", font_size=18, label="MEMORIA"),
-        _base_widget("bar", "netdown", metric="net_down", x=16, y=226, w=288, h=42,
+        _base_widget("bar", "netdown", metric="net_down", x=16, y=213, w=288, h=36,
                      color="#34d399", font_size=18, label="RED BAJADA"),
-        _base_widget("bar", "temp", metric="temp", x=16, y=274, w=288, h=42,
+        _base_widget("bar", "temp", metric="temp", x=16, y=252, w=288, h=36,
                      color="#fb7185", font_size=18, label="TEMPERATURA"),
-        _base_widget("services", "services", x=16, y=324, w=140, h=144,
-                     font_size=19, label="SERVICIOS", source="systemd"),
-        _base_widget("services", "docker", x=164, y=324, w=140, h=144,
-                     font_size=19, label="CONTENEDORES", source="docker"),
+        _base_widget("bar", "disk", metric="disk", x=16, y=291, w=288, h=36,
+                     color="#f59e0b", font_size=18, label="DISCO"),
+        _base_widget("services", "services", x=16, y=333, w=140, h=136,
+                     font_size=18, label="SERVICIOS", source="systemd"),
+        _base_widget("services", "docker", x=164, y=333, w=140, h=136,
+                     font_size=18, label="CONTENEDORES", source="docker"),
     ]
 
 
@@ -144,7 +149,7 @@ def _preset_classic():
         _base_widget("spark", "net", metric="net_down", x=16, y=242, w=288, h=90,
                      color="#34d399", font_size=15, label="RED BAJADA"),
         _base_widget("text", "rows", x=16, y=340, w=288, h=120, font_size=15,
-                     text="CPU   {cpu}\nRAM   {ram_used} / {ram_total}\nRED   {net_down}  ↓   {net_up} ↑\nUPTIME {uptime}",
+                     text="CPU   {cpu}\nRAM   {ram_used} / {ram_total}\nRED   {net_down}  ↓   {net_up} ↑\n{gpu_line}UPTIME {uptime}",
                      color="#f1f5f9"),
     ]
 
