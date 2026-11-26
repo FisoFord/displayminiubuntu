@@ -108,20 +108,12 @@ def _ellipsize(draw, text: str, font_obj, max_width: int) -> str:
     return (text + "…") if text else ""
 
 
-def _text(draw, xy, text, font_obj, fill, anchor=None, stroke=1):
-    """Texto con un contorno oscuro fino para que se lea sobre fotos claras."""
+def _text(draw, xy, text, font_obj, fill, anchor=None):
+    """Texto limpio, sin contorno ni sombra."""
     kwargs = {"font": font_obj, "fill": fill}
     if anchor:
         kwargs["anchor"] = anchor
-    if stroke:
-        kwargs["stroke_width"] = stroke
-        kwargs["stroke_fill"] = (0, 0, 0)
-    try:
-        draw.text(xy, text, **kwargs)
-    except (TypeError, ValueError):
-        kwargs.pop("stroke_width", None)
-        kwargs.pop("stroke_fill", None)
-        draw.text(xy, text, **kwargs)
+    draw.text(xy, text, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +321,7 @@ def _draw_ring(img, draw, widget, data, rects):
     value_text = data["text"]
     vf = _fit_font(draw, value_text, int(size * 0.30), int(size * 0.80), True)
     _text(draw, (cx, cy - (6 if data["unit"] else 0)), value_text, vf,
-          rgba(widget.get("value_color", "#ffffff")), anchor="mm", stroke=2)
+          rgba(widget.get("value_color", "#ffffff")), anchor="mm")
     if data["unit"]:
         uf = font(max(8, int(size * 0.10)), False)
         _text(draw, (cx, cy + int(size * 0.10)), data["unit"], uf,
@@ -434,7 +426,7 @@ def _draw_metric(img, draw, widget, data, rects):
 
     vf = font(size, True)
     _text(draw, (x + pad, center), text, vf,
-          rgba(widget.get("value_color", "#ffffff")), anchor="lm", stroke=2)
+          rgba(widget.get("value_color", "#ffffff")), anchor="lm")
     if unit:
         _text(draw, (x + pad + draw.textlength(text, font=vf) + 4, center), unit,
               font(unit_size, True), rgba(widget.get("color", "#22d3ee")), anchor="lm")
@@ -475,7 +467,7 @@ def _draw_clock(img, draw, widget, stats, rects):
     time_text = stats.get("time", "--:--")
     vf = _fit_font(draw, time_text, fs, int(w - right_w - pad * 2 - 10), True)
     _text(draw, (x + pad, y + h // 2), time_text, vf,
-          rgba(widget.get("value_color", "#ffffff")), anchor="lm", stroke=2)
+          rgba(widget.get("value_color", "#ffffff")), anchor="lm")
 
     line_h = int(sf_size * 1.35)
     block_top = y + (h - line_h * 2) // 2
