@@ -158,13 +158,7 @@ def metric_data(stats: dict, metric: str) -> dict:
         text = f"{value:.0f}%"
         if busy is not None:
             text += f" · {busy:.0f}%act"
-        rate = None
-        if (disk.get("write_bps") or 0) >= (disk.get("read_bps") or 0):
-            rate = disk.get("write_str")
-        else:
-            rate = disk.get("read_str")
-        if rate and ((disk.get("write_bps") or 0) > 0 or (disk.get("read_bps") or 0) > 0):
-            text += f" · {rate}"
+        free = max(0.0, min(100.0, 100.0 - value))
         parts = []
         if disk.get("read_str"):
             parts.append(f"R {disk['read_str']}")
@@ -173,8 +167,9 @@ def metric_data(stats: dict, metric: str) -> dict:
         if disk.get("latency") is not None:
             parts.append(f"{disk['latency']:.0f} ms")
         sub = " · ".join(parts) if parts else "sin datos E/S"
+        type_label = disk.get("type_label") or "ALMACENAMIENTO"
         return {"value": value, "max": 100.0, "text": text, "unit": "",
-                "label": disk.get("type_label") or "ALMACENAMIENTO", "sub": sub}
+                "label": f"{type_label} ({free:.0f}% libre)", "sub": sub}
     if metric == "temp":
         temp = stats.get("cpu", {}).get("temp")
         value = float(temp or 0)
@@ -340,10 +335,13 @@ def _panel(img: Image.Image, widget: dict):
 def _title_row(draw, widget: dict, x, y, w, label, value_text="", color=None):
     size = max(10, int(widget.get("font_size", 18) * 0.76))
     f = font(size, False)
-    label = _short(label.upper(), 26)
-    _text(draw, (x, y), label, f, rgba(widget.get("label_color", "#c7d7ea")))
+    label = _short(label.upper(), 30)
     if value_text:
         vf = font(size, True)
+        max_label = max(20, w - draw.textlength(value_text, font=vf) - 8)
+        label = _ellipsize(draw, label, f, max_label)
+    _text(draw, (x, y), label, f, rgba(widget.get("label_color", "#c7d7ea")))
+    if value_text:
         _text(draw, (x + w, y), value_text, vf,
               rgba(color or widget.get("value_color", "#ffffff")), anchor="ra")
 

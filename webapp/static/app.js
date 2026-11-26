@@ -452,6 +452,8 @@ function renderSvcCards() {
   const disk = stats.disk || {};
   const diskLabel = t('storage.' + (disk.type || 'unknown'));
   const diskParts = [];
+  const free = Math.max(0, Math.min(100, 100 - Number(disk.percent || 0)));
+  diskParts.push(t('services.free', { percent: free.toFixed(0) }));
   if (disk.used_str && disk.total_str) diskParts.push(disk.used_str + ' / ' + disk.total_str);
   if (disk.read_str) diskParts.push('R ' + disk.read_str);
   if (disk.write_str) diskParts.push('W ' + disk.write_str);
