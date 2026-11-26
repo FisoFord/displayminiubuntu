@@ -155,9 +155,18 @@ def metric_data(stats: dict, metric: str) -> dict:
         disk = stats.get("disk", {})
         value = float(disk.get("percent") or 0)
         busy = disk.get("busy")
-        text = f"{value:.0f}%"
+        perf = []
         if busy is not None:
-            text += f" · {busy:.0f}%act"
+            perf.append(f"{busy:.0f}%act")
+        else:
+            read_bps = disk.get("read_bps") or 0
+            write_bps = disk.get("write_bps") or 0
+            if read_bps or write_bps:
+                if read_bps >= write_bps:
+                    perf.append("R " + (disk.get("read_str") or "0 B/s"))
+                else:
+                    perf.append("W " + (disk.get("write_str") or "0 B/s"))
+        text = " · ".join(perf)
         free = max(0, min(100, int(round(100.0 - value))))
         if free < 10:
             free_color = "#fb7185"
