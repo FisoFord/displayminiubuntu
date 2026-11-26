@@ -10,7 +10,7 @@
 
 <p align="center">
   <b>Monitor your Linux server on a 3.5" USB display and manage it from your browser.</b><br>
-  Four layouts, rotating backgrounds, live metrics and service/container status.
+  Four layouts, rotating backgrounds, CPU/RAM/GPU/disk metrics and service/container status.
 </p>
 
 <p align="center">
@@ -34,8 +34,14 @@ with no Windows-only software involved:
   a check from the web UI.
 - **Decorative backgrounds**: upload several images, rotate them and adjust
   opacity, blur, tint and shading so the data stays readable.
-- **Live metrics**: CPU, RAM, swap, disk, network, temperature, load, processes,
+- **Live metrics**: CPU, RAM, swap, GPU (usage, VRAM and temperature), disk
+  (capacity, type, activity and I/O), network, temperature, load, processes,
   frequency, uptime, failed services and containers.
+- **GPU only when present**: shown in the header, Classic and Services; it takes
+  no space when there is no GPU.
+- **Smart disk**: detects HDD/SSD/NVMe and shows the free percentage in colour
+  (red <10%, yellow 10–30%, green >30%) next to its performance.
+- **UI in 5 languages**: Spanish, English, Portuguese, French and Italian.
 - **Proxmox-style view**: systemd and Docker status, CPU/RAM per service, and
   optional start/stop/restart actions.
 - **Real-time preview** of the display inside the browser.
@@ -61,10 +67,11 @@ No drivers are required on Linux. The installer also creates a stable
 | Minimal | Proxmox | Neon | Classic |
 |:---:|:---:|:---:|:---:|
 | <img src="docs/panel-minimal.png" width="160" alt="Minimal layout"> | <img src="docs/panel-proxmox.png" width="160" alt="Proxmox layout"> | <img src="docs/panel-neon.png" width="160" alt="Neon layout"> | <img src="docs/panel-classic.png" width="160" alt="Classic layout"> |
-| CPU, RAM, network, temperature and service/container columns | CPU/RAM rings, network, disk and service list | CPU/temperature rings and history charts | Bars, network chart and text summary |
+| CPU, RAM, network, temperature, disk and service/container columns (GPU in header) | CPU/RAM rings, network, disk with free space/activity and services | CPU/temperature rings, history charts and disk | Bars, network chart and summary with GPU |
 
 A fresh installation starts with **Minimal**. The editor thumbnails are rendered
-with your background and your current data.
+with your background and your current data. The disk shows its type
+(HDD/SSD/NVMe) and free %; the GPU only appears when present.
 
 ## Web UI
 
@@ -72,8 +79,15 @@ with your background and your current data.
 - **Background**: gallery with multi-upload, rotation, opacity, blur, tint,
   shading and fit.
 - **Display**: brightness (20–50% recommended) and refresh rate (0.5–3 fps).
+- **Language**: ES/EN/PT/FR/IT selector in the header, saved per browser.
 - **Services**: node summary, systemd table, Docker table and filters.
 - **Settings**: diagnostics, config import/export and logs.
+
+### Languages
+
+The UI is available in **Spanish, English, Portuguese, French and Italian**. The
+selector is in the header, the choice is saved per browser and the default is
+Spanish.
 
 ### Services and containers
 
@@ -155,6 +169,7 @@ write to the same serial port.
 - `http://IP:8080/#settings` — diagnostics and logs.
 - `http://IP:8080/?demo=1#services` — services view with sample data (useful for
   trying the UI without systemd/Docker).
+- The header selector switches the UI between **ES/EN/PT/FR/IT**.
 
 ### Optional authentication
 
@@ -252,6 +267,20 @@ it does not come back, unplug the display for 10 seconds and reconnect it.
 
 This is normal on revision A. Keep brightness between 20 and 50%.
 
+**No temperature or GPU appears**
+
+On Linux the CPU temperature comes from `hwmon`: install `lm-sensors` and run
+`sensors-detect --auto`. NVIDIA is read with `nvidia-smi`; AMD with
+`amdgpu`/sysfs. Intel iGPUs usually expose neither usage nor temperature. If the
+GPU exists but provides no data, the panel shows `GPU n/d` and Services shows the
+source. Generic Windows sensors are not available.
+
+**The disk shows no activity or latency**
+
+On Linux they are computed from `/proc/diskstats`; Windows lacks the I/O times,
+so only capacity and read/write are shown. The type (HDD/SSD/NVMe) is detected
+with `lsblk`/`sysfs`; inside a container it may show `STORAGE`.
+
 **WSL**
 
 WSL2 does not share the serial USB reliably. Use native Linux or a VM with the
@@ -274,7 +303,7 @@ driverMiniDisplay/
 │   ├── engine.py           # render thread
 │   ├── display.py          # panel push thread
 │   ├── templates/          # UI
-│   ├── static/             # CSS and JS
+│   ├── static/             # CSS, JS and i18n
 │   ├── defaults/           # 5 original backgrounds
 │   ├── requirements.txt
 │   └── install.sh

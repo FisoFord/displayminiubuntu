@@ -10,7 +10,7 @@
 
 <p align="center">
   <b>Surveillez votre serveur Linux sur un écran USB 3,5" et gérez-le depuis votre navigateur.</b><br>
-  Quatre dispositions, arrière-plans rotatifs, métriques en direct et état des services et conteneurs.
+  Quatre dispositions, arrière-plans rotatifs, métriques CPU/RAM/GPU/disque et état des services et conteneurs.
 </p>
 
 <p align="center">
@@ -35,8 +35,14 @@ serveur, sans dépendre d'un logiciel Windows :
 - **Arrière-plans décoratifs** : envoyez plusieurs images, activez la rotation et
   ajustez l'opacité, le flou, la teinte et le dégradé pour garder les données
   lisibles.
-- **Métriques en direct** : CPU, RAM, swap, disque, réseau, température, load,
-  processus, fréquence, uptime, services en échec et conteneurs.
+- **Métriques en direct** : CPU, RAM, swap, GPU (usage, VRAM et température),
+  disque (capacité, type, activité et E/S), réseau, température, load, processus,
+  fréquence, uptime, services en échec et conteneurs.
+- **GPU uniquement s'il existe** : affichée dans l'en-tête, en Classique et dans
+  Services ; sans GPU, elle n'occupe pas d'espace.
+- **Disque intelligent** : détecte HDD/SSD/NVMe et affiche le % libre en couleur
+  (rouge <10 %, jaune 10–30 %, vert >30 %) avec ses performances.
+- **Interface en 5 langues** : espagnol, anglais, portugais, français et italien.
 - **Vue type Proxmox** : état de systemd et Docker, CPU/RAM par service et
   actions optionnelles de démarrage, arrêt ou redémarrage.
 - **Aperçu en temps réel** de l'écran dans le navigateur.
@@ -62,10 +68,11 @@ stable `/dev/turing-screen` et les permissions du groupe `dialout`.
 | Minimal | Proxmox | Neon | Classique |
 |:---:|:---:|:---:|:---:|
 | <img src="docs/panel-minimal.png" width="160" alt="Disposition Minimal"> | <img src="docs/panel-proxmox.png" width="160" alt="Disposition Proxmox"> | <img src="docs/panel-neon.png" width="160" alt="Disposition Neon"> | <img src="docs/panel-classic.png" width="160" alt="Disposition Classique"> |
-| CPU, RAM, réseau, température et colonnes services/conteneurs | Anneaux CPU/RAM, réseau, disque et liste des services | Anneaux CPU/température et graphiques historiques | Barres, graphique réseau et résumé texte |
+| CPU, RAM, réseau, température, disque et colonnes services/conteneurs (GPU dans l'en-tête) | Anneaux CPU/RAM, réseau, disque avec libre/activité et services | Anneaux CPU/température, historiques et disque | Barres, réseau et résumé avec GPU |
 
 Une nouvelle installation démarre avec **Minimal**. Les miniatures de l'éditeur
-sont générées avec votre arrière-plan et vos données actuelles.
+sont générées avec votre arrière-plan et vos données actuelles. Le disque affiche
+son type (HDD/SSD/NVMe) et le % libre ; la GPU n'apparaît que si elle existe.
 
 ## Panneau web
 
@@ -73,8 +80,15 @@ sont générées avec votre arrière-plan et vos données actuelles.
 - **Arrière-plan** : galerie avec envoi multiple, rotation, opacité, flou,
   teinte, dégradé et cadrage.
 - **Écran** : luminosité (20–50 % recommandé) et rafraîchissement (0,5–3 fps).
+- **Langue** : sélecteur ES/EN/PT/FR/IT dans l'en-tête, mémorisé par navigateur.
 - **Services** : résumé du nœud, tableau systemd, tableau Docker et filtres.
 - **Réglages** : diagnostic, export/import de la configuration et journaux.
+
+### Langues
+
+L'interface est disponible en **espagnol, anglais, portugais, français et
+italien**. Le sélecteur est dans l'en-tête, le choix est mémorisé par navigateur
+et la langue par défaut est l'espagnol.
 
 ### Services et conteneurs
 
@@ -158,6 +172,7 @@ les deux écrivent sur le même port série.
 - `http://IP:8080/#settings` — diagnostic et journaux.
 - `http://IP:8080/?demo=1#services` — vue des services avec des données
   d'exemple (utile pour tester l'interface sans systemd/Docker).
+- Le sélecteur de l'en-tête change l'interface entre **ES/EN/PT/FR/IT**.
 
 ### Authentification optionnelle
 
@@ -256,6 +271,22 @@ automatiquement ; sinon, débranchez l'écran 10 secondes et rebranchez-le.
 
 C'est normal sur la révision A. Gardez la luminosité entre 20 et 50 %.
 
+**La température ou la GPU n'apparaît pas**
+
+Sous Linux, la température du CPU vient de `hwmon` : installez `lm-sensors` et
+lancez `sensors-detect --auto`. NVIDIA se lit avec `nvidia-smi` ; AMD avec
+`amdgpu`/sysfs. Les iGPU Intel n'exposent généralement ni usage ni température.
+Si la GPU existe mais ne fournit pas de données, le panneau affiche `GPU n/d` et
+Services indique la source. Les capteurs génériques de Windows ne sont pas
+disponibles.
+
+**Le disque n'affiche ni activité ni latence**
+
+Sous Linux, elles sont calculées depuis `/proc/diskstats` ; sous Windows les
+temps d'E/S manquent, donc seules la capacité et la lecture/écriture sont
+affichées. Le type (HDD/SSD/NVMe) est détecté avec `lsblk`/`sysfs` ; dans un
+conteneur, il peut afficher `STOCKAGE`.
+
 **WSL**
 
 WSL2 ne partage pas l'USB série de façon fiable. Utilisez Linux natif ou une VM
@@ -278,7 +309,7 @@ driverMiniDisplay/
 │   ├── engine.py           # thread de rendu
 │   ├── display.py          # thread d'envoi vers l'écran
 │   ├── templates/          # interface
-│   ├── static/             # CSS et JS
+│   ├── static/             # CSS, JS et i18n
 │   ├── defaults/           # 5 arrière-plans originaux
 │   ├── requirements.txt
 │   └── install.sh

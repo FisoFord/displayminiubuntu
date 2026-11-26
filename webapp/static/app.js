@@ -31,9 +31,10 @@ const DEMO_STATS = {
   hostname: 'ubuntu-server',
   cpu: { percent: 34, count: 8, load: 0.62 },
   ram: { percent: 58, used_str: '9.7 GB', total_str: '16.7 GB' },
-  disk: { percent: 61, used_str: '98 GB', total_str: '160 GB' },
+  disk: { percent: 72, used_str: '78.7 GB', total_str: '110.4 GB', type: 'nvme',
+          read_str: '12.3 MB/s', write_str: '3.1 MB/s', busy: 12, latency: 2 },
   net: { down_str: '1.2 MB/s', up_str: '180 KB/s' },
-  gpu: { name: 'NVIDIA GeForce RTX 3060', percent: 18, temp: 55,
+  gpu: { available: true, name: 'NVIDIA GeForce RTX 3060', percent: 18, temp: 55,
          memory_used_str: '2.1 GB', memory_total_str: '12 GB' },
   uptime_str: '8d 3h',
 };

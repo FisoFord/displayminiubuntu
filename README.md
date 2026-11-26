@@ -10,7 +10,7 @@
 
 <p align="center">
   <b>Monitoriza tu servidor Linux en una pantalla USB de 3.5" y gestiónalo desde el navegador.</b><br>
-  Cuatro diseños, fondos rotatorios, métricas en vivo y estado de servicios y contenedores.
+  Cuatro diseños, fondos rotatorios, métricas de CPU/RAM/GPU/disco y estado de servicios y contenedores.
 </p>
 
 <p align="center">
@@ -34,8 +34,14 @@ servidor, sin depender de ningún programa de Windows:
   eligen con un check desde la web.
 - **Fondos decorativos**: sube varias imágenes, actívalas en rotación y ajusta
   opacidad, desenfoque, tinte y degradado para que los datos se lean bien.
-- **Métricas en vivo**: CPU, RAM, swap, disco, red, temperatura, load, procesos,
+- **Métricas en vivo**: CPU, RAM, swap, GPU (uso, VRAM y temperatura), disco
+  (capacidad, tipo, actividad y E/S), red, temperatura, load, procesos,
   frecuencia, uptime, servicios con fallo y contenedores.
+- **GPU solo si existe**: aparece en la cabecera, en Clásico y en Servicios; si
+  no hay GPU no ocupa espacio.
+- **Disco inteligente**: detecta HDD/SSD/NVMe y muestra el porcentaje libre con
+  color (rojo <10 %, amarillo 10–30 %, verde >30 %) junto al rendimiento.
+- **Interfaz en 5 idiomas**: español, inglés, portugués, francés e italiano.
 - **Vista tipo Proxmox**: estado de systemd y Docker, CPU/RAM por servicio y
   acciones de arrancar, detener o reiniciar (opcionales).
 - **Vista previa en tiempo real** del panel dentro del navegador.
@@ -61,10 +67,11 @@ estable `/dev/turing-screen` y los permisos para el grupo `dialout`.
 | Minimal | Proxmox | Neón | Clásico |
 |:---:|:---:|:---:|:---:|
 | <img src="docs/panel-minimal.png" width="160" alt="Diseño Minimal"> | <img src="docs/panel-proxmox.png" width="160" alt="Diseño Proxmox"> | <img src="docs/panel-neon.png" width="160" alt="Diseño Neón"> | <img src="docs/panel-classic.png" width="160" alt="Diseño Clásico"> |
-| CPU, RAM, red, temperatura y columnas de servicios y contenedores | Anillos CPU/RAM, red, disco y lista de servicios | Anillos CPU/temperatura y gráficas históricas | Barras, gráfica de red y resumen de texto |
+| CPU, RAM, red, temperatura, disco y columnas de servicios/contenedores (GPU en cabecera) | Anillos CPU/RAM, red, disco con libre/actividad y servicios | Anillos CPU/temperatura, históricos y disco | Barras, red y resumen con GPU |
 
 Una instalación nueva arranca con **Minimal**. Las miniaturas del editor se
-generan con tu fondo y tus datos actuales.
+generan con tu fondo y tus datos actuales. El disco muestra su tipo
+(HDD/SSD/NVMe) y el % libre; la GPU solo aparece cuando existe.
 
 ## Panel web
 
@@ -72,8 +79,15 @@ generan con tu fondo y tus datos actuales.
 - **Fondo**: galería con subida múltiple, rotación, opacidad, desenfoque, tinte,
   degradado y encaje.
 - **Pantalla**: brillo (20–50 % recomendado) y refresco (0.5–3 fps).
+- **Idioma**: selector ES/EN/PT/FR/IT en la cabecera; se guarda en el navegador.
 - **Servicios**: resumen del nodo, tabla de systemd, tabla de Docker y filtros.
 - **Ajustes**: diagnóstico, exportar/importar configuración y logs.
+
+### Idiomas
+
+La interfaz está disponible en **español, inglés, portugués, francés e
+italiano**. El selector está en la cabecera, la elección se guarda por navegador
+y el idioma por defecto es español.
 
 ### Servicios y contenedores
 
@@ -156,6 +170,7 @@ escriben en el mismo puerto serie.
 - `http://IP:8080/#settings` — diagnóstico y logs.
 - `http://IP:8080/?demo=1#services` — vista de servicios con datos de ejemplo
   (útil para probar la interfaz sin systemd/Docker).
+- El selector de la cabecera cambia la interfaz entre **ES/EN/PT/FR/IT**.
 
 ### Autenticación opcional
 
@@ -253,6 +268,21 @@ automáticamente; si no vuelve, desenchufa el panel 10 segundos y reconéctalo.
 
 Es normal en la revisión A. Mantén el brillo entre 20 y 50 %.
 
+**No aparece la temperatura o la GPU**
+
+En Linux la temperatura del CPU sale de `hwmon`: instala `lm-sensors` y ejecuta
+`sensors-detect --auto`. NVIDIA se lee con `nvidia-smi`; AMD con `amdgpu`/sysfs.
+Las iGPU Intel suelen no exponer uso ni temperatura. Si la GPU existe pero no da
+datos, el panel muestra `GPU n/d` y Servicios indica la fuente. En Windows
+genérico los sensores no están disponibles.
+
+**El disco no muestra actividad o latencia**
+
+En Linux se calculan desde `/proc/diskstats`; en Windows faltan los tiempos de
+E/S y solo se muestran capacidad y lectura/escritura. El tipo (HDD/SSD/NVMe) se
+detecta con `lsblk`/`sysfs`; dentro de un contenedor puede aparecer
+`ALMACENAMIENTO`.
+
 **WSL**
 
 WSL2 no comparte el USB serie de forma fiable. Usa Linux nativo o una máquina
@@ -275,7 +305,7 @@ driverMiniDisplay/
 │   ├── engine.py           # hilo de render
 │   ├── display.py          # hilo de envío al panel
 │   ├── templates/          # interfaz
-│   ├── static/             # CSS y JS
+│   ├── static/             # CSS, JS e i18n
 │   ├── defaults/           # 5 fondos originales
 │   ├── requirements.txt
 │   └── install.sh
