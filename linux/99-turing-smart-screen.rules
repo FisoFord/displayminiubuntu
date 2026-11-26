@@ -1,0 +1,10 @@
+# Turing Smart Screen / UsbPCMonitor 3.5" (WCH CH340 en modo CDC-ACM)
+# Instalar en /etc/udev/rules.d/99-turing-smart-screen.rules
+#   sudo cp 99-turing-smart-screen.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# Crea /dev/turing-screen, permite abrir el puerto al usuario de la sesion
+# (TAG uaccess) y al grupo dialout, sin necesidad de root.
+# Nota: en Arch/Manjaro cambia GROUP="dialout" por GROUP="uucp".
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="5722", \
+    SYMLINK+="turing-screen", GROUP="dialout", MODE="0660", TAG+="uaccess"

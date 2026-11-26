@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MiniDisplay · Panel</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">▮</span> MiniDisplay <small>panel</small></div>
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="design">Diseño</button>
+    <button class="tab-btn" data-tab="services">Servicios</button>
+    <button class="tab-btn" data-tab="settings">Ajustes</button>
+  </nav>
+  <div class="statusline">
+    <span id="deviceDot" class="dot"></span>
+    <span id="deviceText">conectando…</span>
+    <span class="sep"></span>
+    <span id="pushText" class="muted"></span>
+  </div>
+</header>
+
+<main>
+  <!-- ============================================================ DISEÑO -->
+  <section id="tab-design" class="tab-panel">
+    <div class="preview-col">
+      <div class="device">
+        <img id="preview" alt="Vista previa del panel" draggable="false" src="/api/preview.png">
+      </div>
+      <div class="preview-foot">
+        <span id="previewInfo" class="muted">320 × 480</span>
+        <button id="pushBtn" class="btn small">Enviar ahora</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Pantalla</h2></div>
+        <div id="displaySettings" class="form grid2"></div>
+      </div>
+    </div>
+
+    <div class="editor-col">
+      <div class="card">
+        <div class="card-head">
+          <h2>Diseño del panel</h2>
+          <span class="muted">4 estilos</span>
+        </div>
+        <div id="designGrid" class="designs"></div>
+        <p class="hint" id="designHint">Elige uno de los cuatro diseños. El fondo, el brillo y las imágenes se ajustan debajo.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Fondo / marca de agua</h2>
+          <span id="bgCount" class="muted"></span>
+        </div>
+        <div id="bgGallery" class="gallery"></div>
+        <label class="upload" id="dropZone">
+          <input type="file" id="bgUpload" accept="image/*" multiple hidden>
+          <span>Arrastra imágenes aquí o <b>haz clic</b></span>
+          <small>JPG, PNG, WEBP · máx 30 MB · rotación automática opcional</small>
+        </label>
+        <div id="bgControls" class="form grid2"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================= SERVICIOS -->
+  <section id="tab-services" class="tab-panel hidden">
+    <div class="svc-head">
+      <h2>Servicios del sistema</h2>
+      <div class="row">
+        <input id="svcSearch" class="input" placeholder="Filtrar unidad o descripción…">
+        <select id="svcState" class="input">
+          <option value="all">Todos</option>
+          <option value="active">Activos</option>
+          <option value="failed">Con fallo</option>
+          <option value="inactive">Inactivos</option>
+        </select>
+        <button id="svcRefresh" class="btn small">Refrescar</button>
+      </div>
+    </div>
+
+    <div id="svcCards" class="stat-cards"></div>
+    <div id="svcNote" class="notice hidden"></div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>systemd</h2>
+        <span id="svcCount" class="muted"></span>
+      </div>
+      <div class="table-wrap">
+        <table id="svcTable">
+          <thead>
+            <tr>
+              <th title="Mostrar en el panel">Panel</th>
+              <th>Unidad</th>
+              <th>Estado</th>
+              <th class="num">CPU</th>
+              <th class="num">RAM</th>
+              <th class="num">Activo desde</th>
+              <th class="num">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="svcBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h2>Docker</h2>
+        <span id="dockerCount" class="muted"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Contenedor</th>
+              <th>Imagen</th>
+              <th>Estado</th>
+              <th class="num">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="dockerBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================== AJUSTES -->
+  <section id="tab-settings" class="tab-panel hidden">
+    <div class="card">
+      <div class="card-head"><h2>Diagnóstico</h2></div>
+      <div id="healthBox" class="kv"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Configuración</h2></div>
+      <div class="row">
+        <button id="exportBtn" class="btn small">Exportar config.json</button>
+        <label class="btn small" style="cursor:pointer">
+          Importar…
+          <input type="file" id="importFile" accept="application/json" hidden>
+        </label>
+      </div>
+      <p class="hint">La configuración se guarda en el servidor y se aplica al instante.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Logs</h2></div>
+      <button id="logsBtn" class="btn small">Ver últimas 150 líneas</button>
+      <pre id="logsBox" class="logs hidden"></pre>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Seguridad</h2></div>
+      <p class="hint">
+        Por defecto el panel no pide contraseña, pensado para una red local de confianza.
+        Para activar autenticación básica, define <code>WEBAPP_USER</code> y
+        <code>WEBAPP_PASSWORD</code> en <code>/etc/default/minidisplay-web</code> y reinicia el
+        servicio. Las acciones sobre servicios necesitan <code>sudo</code> sin contraseña
+        (instalador con <code>--actions</code>).
+      </p>
+    </div>
+  </section>
+</main>
+
+<div id="toasts" class="toasts"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

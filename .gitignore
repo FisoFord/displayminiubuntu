@@ -1,0 +1,11 @@
+# Entorno local de pruebas en Windows
+.venv/
+__pycache__/
+*.pyc
+
+# Generados en tiempo de ejecucion
+log.log
+log.log.*
+screencap.png
+sample.png
+webapp/data/
