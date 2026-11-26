@@ -116,7 +116,32 @@ arquivos).
 
 ## Instalação
 
-### Do GitHub
+### Instalação rápida (recomendada)
+
+No Ubuntu, um único comando:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FisoFord/displayminiubuntu/main/install.sh | sudo bash
+```
+
+Faz tudo: dependências, regra udev, cópia para `/opt/minidisplay-web`, ambiente
+virtual, serviço systemd e arranque. Depois abra `http://IP_DO_SERVIDOR:8080` e
+saia/entre novamente para o grupo `dialout`.
+
+Opções:
+
+```bash
+# outro porto
+curl -fsSL https://raw.githubusercontent.com/FisoFord/displayminiubuntu/main/install.sh | sudo bash -s -- --port 9000
+
+# somente leitura, sem ações de serviços
+curl -fsSL https://raw.githubusercontent.com/FisoFord/displayminiubuntu/main/install.sh | sudo bash -s -- --no-actions
+```
+
+Execute o mesmo comando para atualizar; os dados em `/var/lib/minidisplay-web`
+são mantidos.
+
+### Instalação manual (alternativa)
 
 ```bash
 sudo apt update && sudo apt install -y git
@@ -146,6 +171,14 @@ Ao terminar, **saia e entre novamente** para o seu usuário receber o grupo
 7. Cria e inicia o serviço `minidisplay-web`.
 
 ### Atualizar
+
+Se usou o comando rápido, execute-o novamente:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FisoFord/displayminiubuntu/main/install.sh | sudo bash
+```
+
+Numa instalação manual:
 
 ```bash
 cd ~/driverMiniDisplay
@@ -290,6 +323,7 @@ VM com o USB passado para ela.
 
 ```
 driverMiniDisplay/
+├── install.sh              # instalador rápido (curl | sudo bash)
 ├── minidisplay.py          # driver e CLI da tela (Linux/Windows/macOS)
 ├── linux/                  # monitor clássico de console (opcional)
 │   ├── install.sh

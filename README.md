@@ -117,7 +117,33 @@ Para añadir más fondos de serie, colócalos en esa carpeta y actualiza
 
 ## Instalación
 
-### Desde GitHub
+### Instalación rápida (recomendada)
+
+En el Ubuntu, un solo comando:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FisoFord/displayminiubuntu/main/install.sh | sudo bash
+```
+
+Hace todo: dependencias, regla udev, copia a `/opt/minidisplay-web`, entorno
+virtual, servicio systemd y arranque. Al terminar abre
+`http://IP_DEL_SERVIDOR:8080` y cierra sesión/entra de nuevo para el grupo
+`dialout`.
+
+Opciones:
+
+```bash
+# otro puerto
+curl -fsSL https://raw.githubusercontent.com/FisoFord/displayminiubuntu/main/install.sh | sudo bash -s -- --port 9000
+
+# solo lectura, sin acciones de servicios
+curl -fsSL https://raw.githubusercontent.com/FisoFord/displayminiubuntu/main/install.sh | sudo bash -s -- --no-actions
+```
+
+El instalador se puede repetir para actualizar; los datos de
+`/var/lib/minidisplay-web` se conservan.
+
+### Instalación manual (alternativa)
 
 ```bash
 sudo apt update && sudo apt install -y git
@@ -147,6 +173,14 @@ Al terminar, **cierra sesión y vuelve a entrar** para tomar el grupo `dialout`
 7. Crea y arranca el servicio `minidisplay-web`.
 
 ### Actualizar
+
+Si instalaste con el comando rápido, vuelve a ejecutarlo:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FisoFord/displayminiubuntu/main/install.sh | sudo bash
+```
+
+En una instalación manual:
 
 ```bash
 cd ~/driverMiniDisplay
@@ -292,6 +326,7 @@ con el USB pasado a la VM.
 
 ```
 driverMiniDisplay/
+├── install.sh              # instalador rápido (curl | sudo bash)
 ├── minidisplay.py          # driver y CLI del panel (Linux/Windows/macOS)
 ├── linux/                  # monitor clásico de consola (opcional)
 │   ├── install.sh
